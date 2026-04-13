@@ -2,6 +2,7 @@ import sbt.*
 
 val scala3Version = "3.8.3"
 val projectVersion = "0.1.0-SNAPSHOT"
+val kotlinVersion = "1.9.24"
 
 lazy val commonSettings: Seq[Def.Setting[?]] = Seq(
   scalaVersion := scala3Version,
@@ -67,7 +68,12 @@ lazy val luminaConfig =
 lazy val luminaIntegrationTests =
   luminaModule(
     "lumina-integration-tests",
-    project.in(file("integration-tests")).dependsOn(luminaApi, luminaConfig)
+    project.in(file("integration-tests")).dependsOn(luminaApi, luminaConfig),
+    Seq(
+      libraryDependencies ++= Seq(
+        "org.jetbrains.kotlin" % "kotlin-compiler-embeddable" % kotlinVersion % Test
+      )
+    )
   )
 
 lazy val root = project
