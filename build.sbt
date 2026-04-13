@@ -37,7 +37,9 @@ lazy val luminaApi =
 lazy val luminaBackendLocal =
   luminaModule(
     "lumina-backend-local",
-    project.in(file("lumina-backend-local")).dependsOn(luminaPlan)
+    // "test->test" makes lumina-plan's test classes (e.g. BackendComplianceSuite)
+    // visible in this module's test scope.
+    project.in(file("lumina-backend-local")).dependsOn(luminaPlan % "compile->compile;test->test")
   )
 
 lazy val luminaBackendPolars =
@@ -71,8 +73,12 @@ lazy val luminaIntegrationTests =
     project.in(file("integration-tests")).dependsOn(luminaApi, luminaConfig),
     Seq(
       libraryDependencies ++= Seq(
-        "org.jetbrains.kotlin" % "kotlin-compiler-embeddable" % kotlinVersion % Test
-      )
+        "org.jetbrains.kotlin" % "kotlin-compiler-embeddable" % kotlinVersion % Test,
+        "org.jetbrains.kotlin" % "kotlin-stdlib"              % kotlinVersion % Test
+      ),
+      // Flat classloader strategy ensures dynamically compiled and loaded Java/Kotlin
+      // classes (via URLClassLoader) can see all project dependencies at runtime.
+      Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
     )
   )
 
