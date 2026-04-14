@@ -182,8 +182,8 @@ val result = LuminaJava.readCsv("memory://customers")
 | `lumina-api` | Implemented | `DataFrame` DSL, `Lumina`/`LuminaJava` entry points, Java/Kotlin bridges |
 | `lumina-backend-local` | Implemented | Pure-Scala in-memory executor; interprets the full plan AST |
 | `lumina-backend-duckdb` | Implemented | Translates plan to SQL via `PlanToSql`; runs against DuckDB in-process JDBC |
-| `lumina-backend-polars` | Stub | Future Polars JNI integration |
-| `lumina-backend-spark` | Stub | Spark/Flink planner and distributed executor |
+| `lumina-backend-polars` | Stub | Reserved for a future columnar backend; not on the roadmap |
+| `lumina-backend-spark` | Stub | Future Spark translation layer for distributed execution |
 | `lumina-config` | Implemented | `BackendRegistry` and `LuminaSession` for wiring API to backends |
 | `integration-tests` | Implemented | Compiles and executes Java and Kotlin pipelines end-to-end |
 
@@ -205,8 +205,13 @@ The shared AST stays runtime-typed while leaving room for typed Scala-layer help
 
 | Feature | Pandas (Python) | Spark (Scala) | Lumina |
 |---------|-----------------|---------------|--------|
-| Execution | Eager | Lazy (Distributed) | Lazy (Pluggable) |
-| JVM Language Support | N/A | Primarily Scala | Scala, Java, Kotlin |
-| Local Performance | Good | Poor (High Overhead) | Good (LocalBackend); Excellent planned (Polars/JNI) |
-| Type Safety | None | Strong | Strong |
-| Small-data overhead | Low | Very High | Low |
+| Execution model | Eager | Lazy, distributed | Lazy, pluggable |
+| JVM language support | N/A | Primarily Scala | Scala, Java, Kotlin |
+| Small-data backend | N/A (Python only) | Overkill — JVM + driver overhead | `LocalBackend` (pure Scala collections) |
+| Analytical backend | N/A | N/A | `DuckDBBackend` (in-process SQL via JDBC) |
+| Distributed backend | N/A | Native | Planned (Spark translation layer) |
+| Query optimiser | None | Catalyst | Rule-based (`CombineFilters`, `PredicatePushdown`) |
+| Cross-backend type safety | N/A | N/A | `RowNormalizer` — identical value types from every backend |
+| Type safety | None | Strong | Strong |
+| External dependencies | numpy, pandas | Spark cluster | Zero for LocalBackend; `duckdb_jdbc` jar for DuckDB |
+| Setup for local dev | pip install | Spark cluster or local mode | `sbt test` — no cluster, no native libs |
