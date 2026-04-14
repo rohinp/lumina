@@ -153,8 +153,8 @@ class CrossLanguageSmokeSpec extends FunSuite:
         |import lumina.plan.Expression.GreaterThan;
         |import lumina.plan.Aggregation;
         |import lumina.plan.backend.Row;
+        |import lumina.plan.backend.DataRegistry;
         |import lumina.backend.local.LocalBackend;
-        |import lumina.backend.local.DataRegistry;
         |import java.util.List;
         |
         |public class $className {
@@ -200,8 +200,8 @@ class CrossLanguageSmokeSpec extends FunSuite:
        |import lumina.plan.Expression.GreaterThan
        |import lumina.plan.Aggregation
        |import lumina.plan.backend.Row
+       |import lumina.plan.backend.DataRegistry
        |import lumina.backend.local.LocalBackend
-       |import lumina.backend.local.DataRegistry
        |
        |/**
        | * Kotlin reference pipeline for Lumina.

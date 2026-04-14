@@ -5,7 +5,8 @@ import lumina.plan.*
 import lumina.plan.Expression.*
 import lumina.plan.Aggregation.*
 import lumina.plan.backend.*
-import lumina.backend.local.{DataRegistry, LocalBackend}
+import lumina.plan.backend.DataRegistry
+import lumina.backend.local.LocalBackend
 
 /**
  * Tests for LuminaSession — describes how a session selects a backend and

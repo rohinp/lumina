@@ -36,6 +36,18 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   def collectAsList(backend: Backend): java.util.List[Row] =
     collect(backend).asJava
 
+  /**
+   * Returns the logical plan rendered as a human-readable tree string.
+   * Useful for understanding what Lumina will execute before calling collect.
+   */
+  def explainString: String = lumina.plan.LogicalPlanPrinter.explain(logicalPlan)
+
+  /**
+   * Prints the logical plan tree to standard output.
+   * Mirrors Spark's df.explain() for familiarity.
+   */
+  def explain(): Unit = print(explainString)
+
   /** Gives access to the underlying logical plan for advanced tooling. */
   def plan: LogicalPlan = logicalPlan
 

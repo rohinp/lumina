@@ -32,9 +32,12 @@ object BackendRegistry:
   /** Build a registry pre-loaded with all Lumina-bundled backends. */
   def default(): BackendRegistry =
     import lumina.backend.local.LocalBackend
+    import lumina.backend.duckdb.DuckDBBackend
     import lumina.backend.polars.PolarsBackend
     import lumina.backend.spark.SparkBackend
+    import lumina.plan.backend.DataRegistry
     empty
       .register(LocalBackend())
+      .register(DuckDBBackend(DataRegistry.empty))
       .register(new PolarsBackend)
       .register(new SparkBackend)

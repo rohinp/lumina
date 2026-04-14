@@ -3,6 +3,7 @@ import sbt.*
 val scala3Version = "3.8.3"
 val projectVersion = "0.1.0-SNAPSHOT"
 val kotlinVersion = "1.9.24"
+val duckdbVersion = "1.2.0"
 
 lazy val commonSettings: Seq[Def.Setting[?]] = Seq(
   scalaVersion := scala3Version,
@@ -42,6 +43,13 @@ lazy val luminaBackendLocal =
     project.in(file("lumina-backend-local")).dependsOn(luminaPlan % "compile->compile;test->test")
   )
 
+lazy val luminaBackendDuckdb =
+  luminaModule(
+    "lumina-backend-duckdb",
+    project.in(file("lumina-backend-duckdb")).dependsOn(luminaPlan % "compile->compile;test->test"),
+    Seq(libraryDependencies += "org.duckdb" % "duckdb_jdbc" % duckdbVersion)
+  )
+
 lazy val luminaBackendPolars =
   luminaModule(
     "lumina-backend-polars",
@@ -62,6 +70,7 @@ lazy val luminaConfig =
       .dependsOn(
         luminaPlan,
         luminaBackendLocal,
+        luminaBackendDuckdb,
         luminaBackendPolars,
         luminaBackendSpark
       )
@@ -88,6 +97,7 @@ lazy val root = project
     luminaPlan,
     luminaApi,
     luminaBackendLocal,
+    luminaBackendDuckdb,
     luminaBackendPolars,
     luminaBackendSpark,
     luminaConfig,

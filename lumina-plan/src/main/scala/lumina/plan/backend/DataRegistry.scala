@@ -1,14 +1,19 @@
-package lumina.backend.local
-
-import lumina.plan.backend.Row
+package lumina.plan.backend
 
 /**
- * Holds named in-memory datasets that LocalBackend can read as sources.
+ * Holds named in-memory datasets keyed by source path.
  *
- * The `memory://` URI scheme used in ReadCsv paths is resolved against this
- * registry, enabling fully in-memory pipelines without touching the filesystem.
- * Actual CSV paths (anything not starting with "memory://") are resolved by the
- * CsvReader.
+ * Any backend that supports the `memory://` URI scheme resolves source paths
+ * against this registry instead of the filesystem.  The registry is immutable;
+ * each [[register]] call returns a new instance.
+ *
+ * {{{
+ *   val registry = DataRegistry.of(
+ *     "memory://customers" -> customerRows,
+ *     "memory://orders"    -> orderRows
+ *   )
+ *   val backend = LocalBackend(registry)
+ * }}}
  */
 final class DataRegistry private (sources: Map[String, Vector[Row]]):
 
@@ -21,6 +26,9 @@ final class DataRegistry private (sources: Map[String, Vector[Row]]):
     register(path, rows.asScala.toVector)
 
   def get(path: String): Option[Vector[Row]] = sources.get(path)
+
+  /** Returns all registered (path → rows) entries, used by backends to materialise tables. */
+  def allEntries: Map[String, Vector[Row]] = sources
 
 object DataRegistry:
 

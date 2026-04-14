@@ -27,7 +27,7 @@ The JVM data landscape is currently split between "heavy" distributed tools and 
 Lumina separates the **Interface** (user code) from the **Implementation** (execution). The same pipeline runs unchanged on any backend:
 
 1. **Local** — pure JVM, in-memory Scala collections. Works today.
-2. **Turbo** — Polars or DuckDB via JNI for multi-core execution. *(planned)*
+2. **DuckDB** — translates the logical plan to SQL and executes it via DuckDB's embedded JDBC driver. Works today.
 3. **Distributed** — Spark or Flink for petabyte-scale data. *(planned)*
 
 ---
@@ -39,7 +39,8 @@ Lumina separates the **Interface** (user code) from the **Implementation** (exec
 | M1 — API Facade + Logical Plan Core | ✅ Complete | `DataFrame` DSL, plan AST nodes, schema/type system, expression AST, plan-shape tests |
 | M2 — Backend Contract + Registry | ✅ Complete | `LocalBackend` (pure-Scala executor), `DataRegistry`, `CsvLoader`, `BackendRegistry`, `LuminaSession`, `PolarsBackend`/`SparkBackend` stubs |
 | M3 — Multi-language Support | ✅ Complete | `LuminaJava` facade, `Row.of(...)` varargs factory, `Aggregation` Java factories, `Iterable`-based overloads; integration tests compile **and execute** pipelines from Java and Kotlin |
-| M4 — Performance & Advanced Features | 🔜 Planned | Lazy eval controls (`cache`, `explain`), joins, window functions, UDFs |
+| M4 — Explain + DuckDB Backend | ✅ Complete | `LogicalPlanPrinter` / `DataFrame.explain()`, `DuckDBBackend` with `PlanToSql` SQL translator, `BackendComplianceSuite` passed, wired into `BackendRegistry.default()` |
+| M5 — Advanced Features | 🔜 Planned | Joins, window functions, UDFs, predicate pushdown |
 
 ---
 
@@ -51,7 +52,8 @@ Lumina separates the **Interface** (user code) from the **Implementation** (exec
 import lumina.api.Lumina
 import lumina.plan.Expression.*
 import lumina.plan.Aggregation.*
-import lumina.backend.local.{LocalBackend, DataRegistry}
+import lumina.plan.backend.DataRegistry
+import lumina.backend.local.LocalBackend
 import lumina.plan.backend.Row
 
 val rows = Vector(
@@ -72,6 +74,39 @@ val result = Lumina
   .collect(backend)
 
 // result: Vector(Row(Map(city -> Paris, total_revenue -> 4000.0)))
+```
+
+### Explain (any backend)
+
+```scala
+val df = Lumina
+  .readCsv("memory://customers")
+  .filter(GreaterThan(ColumnRef("age"), Literal(30)))
+  .groupBy(Seq(ColumnRef("city")), Seq(Sum(ColumnRef("revenue"), alias = Some("total"))))
+
+df.explain()
+// == Logical Plan ==
+// Aggregate [city] → [SUM(revenue) AS total]
+// +- Filter (age > 30)
+//    +- ReadCsv [memory://customers]
+```
+
+### DuckDB Backend
+
+```scala
+import lumina.backend.duckdb.DuckDBBackend
+
+val backend = DuckDBBackend(DataRegistry.of("memory://customers" -> rows))
+
+val result = Lumina
+  .readCsv("memory://customers")
+  .filter(GreaterThan(ColumnRef("age"), Literal(30)))
+  .groupBy(
+    grouping     = Seq(ColumnRef("city")),
+    aggregations = Seq(Sum(ColumnRef("revenue"), alias = Some("total")))
+  )
+  .collect(backend)
+// result: Vector(Row(Map(city -> Paris, total -> 4000.0)))
 ```
 
 ### Java
@@ -144,7 +179,8 @@ val result = LuminaJava.readCsv("memory://customers")
 | `lumina-plan` | Implemented | Logical plan AST, schema, expressions, backend interface |
 | `lumina-api` | Implemented | `DataFrame` DSL, `Lumina`/`LuminaJava` entry points, Java/Kotlin bridges |
 | `lumina-backend-local` | Implemented | Pure-Scala in-memory executor; interprets the full plan AST |
-| `lumina-backend-polars` | Stub | Polars/DuckDB JNI integration for multi-core execution |
+| `lumina-backend-duckdb` | Implemented | Translates plan to SQL via `PlanToSql`; runs against DuckDB in-process JDBC |
+| `lumina-backend-polars` | Stub | Future Polars JNI integration |
 | `lumina-backend-spark` | Stub | Spark/Flink planner and distributed executor |
 | `lumina-config` | Implemented | `BackendRegistry` and `LuminaSession` for wiring API to backends |
 | `integration-tests` | Implemented | Compiles and executes Java and Kotlin pipelines end-to-end |

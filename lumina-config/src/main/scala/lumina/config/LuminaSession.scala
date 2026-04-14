@@ -26,6 +26,12 @@ object LuminaSession:
   def local(): LuminaSession =
     new LuminaSession(BackendRegistry.default(), "local")
 
+  /** Create a session backed by DuckDB with the provided DataRegistry. */
+  def duckdb(registry: lumina.plan.backend.DataRegistry): LuminaSession =
+    import lumina.backend.duckdb.DuckDBBackend
+    val reg = BackendRegistry.empty.register(DuckDBBackend(registry))
+    new LuminaSession(reg, "duckdb")
+
   /** Create a session using a specific backend name from the default registry. */
   def withBackend(name: String): LuminaSession =
     new LuminaSession(BackendRegistry.default(), name)

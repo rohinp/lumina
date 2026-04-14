@@ -38,15 +38,16 @@ The heart of the project. Contains:
 - `backend/Backend.scala` — `Backend` trait, `BackendCapabilities`, `BackendResult`
 
 **Layer 3 — Pluggable Backends**
-- `lumina-backend-local` — pure Scala, in-memory executor (next to implement)
-- `lumina-backend-polars` — JNI/FFI stub for Polars/DuckDB
-- `lumina-backend-spark` — distributed execution stub
-- `lumina-config` — backend registry and selection (stub)
+- `lumina-backend-local` — pure Scala, in-memory executor; walks `LogicalPlan` AST directly
+- `lumina-backend-duckdb` — JDBC-based executor; translates plan to SQL via `PlanToSql` then runs against DuckDB in-process; `DuckDBBackend` is stateless (new JDBC connection per `execute` call)
+- `lumina-backend-polars` — stub (UnsupportedOperationException)
+- `lumina-backend-spark` — stub (UnsupportedOperationException)
+- `lumina-config` — `BackendRegistry` (name→Backend map), `LuminaSession` (binds registry + backend name)
 
 ### Module Dependency Graph
 
 ```
-lumina-api → lumina-plan ← lumina-backend-{local,polars,spark}
+lumina-api → lumina-plan ← lumina-backend-{local,duckdb,polars,spark}
 lumina-config → lumina-plan + backends
 integration-tests → lumina-api + lumina-config
 ```
@@ -80,6 +81,11 @@ Tests serve as the primary developer documentation for this project. Test names 
 | **M1: API Facade + Logical Plan Core** | Complete | Plan nodes, schema/types, expression AST, DataFrame DSL, plan-shape tests |
 | **M2: Backend Contract + Registry** | Complete | `LocalBackend` (pure-Scala executor), `DataRegistry`, `CsvLoader`, `BackendRegistry`, `LuminaSession`; `PolarsBackend`/`SparkBackend` are UnsupportedOperation stubs |
 | **M3: Multi-language Support** | Complete | `LuminaJava` facade, `Row.of(key,val,...)` varargs factory, `Aggregation.sum/count` Java factories, `Iterable`-based overloads on `DataFrame`; integration tests compile and execute full pipelines from Java and Kotlin |
-| **M4: Performance & Advanced Features** | Not started | Lazy eval controls, joins, windows, UDFs |
+| **M4: Explain + DuckDB Backend** | Complete | `LogicalPlanPrinter` / `DataFrame.explain()`, `lumina-backend-duckdb` with `PlanToSql` SQL translator, `DuckDBBackend` (stateless JDBC), `BackendComplianceSuite` passed, wired into `BackendRegistry.default()` |
+| **M5: Performance & Advanced Features** | Not started | Joins, windows, UDFs, predicate pushdown, columnar execution |
 
-**Current focus — M4:** Lazy eval controls (`cache`, `explain`), extended plan nodes (joins, windows), and UDFs once first backend is fully stable.
+**Key DuckDB implementation notes:**
+- `PlanToSql` translates each `LogicalPlan` node to a nested SQL subquery (no CTEs, pure composable SELECTs)
+- `DuckDBBackend` opens a fresh `jdbc:duckdb:` connection per `execute()` call — no shared state
+- `memory://name` URIs → DuckDB tables created from `DataRegistry` rows via `CREATE TABLE` + `INSERT`
+- `BackendComplianceSuite` is the shared correctness contract; both `LocalBackend` and `DuckDBBackend` must pass it
