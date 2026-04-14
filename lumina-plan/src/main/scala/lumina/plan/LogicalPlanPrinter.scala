@@ -88,6 +88,12 @@ object LogicalPlanPrinter:
     case Distinct(_) =>
       "Distinct"
 
+    case DropColumns(_, cols) =>
+      s"DropColumns [${cols.mkString(", ")}]"
+
+    case RenameColumn(_, from, to) =>
+      s"RenameColumn [$from → $to]"
+
   // ---------------------------------------------------------------------------
   // Expression display helpers
   // ---------------------------------------------------------------------------

@@ -58,6 +58,15 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
             if seen.contains(row.values) then (acc, seen)
             else (acc :+ row, seen + row.values)
         }._1
+      case DropColumns(child, cols)                    =>
+        val toDrop = cols.toSet
+        run(child).map(row => Row(row.values.filterNot { case (k, _) => toDrop.contains(k) }))
+      case RenameColumn(child, oldName, newName)       =>
+        run(child).map { row =>
+          row.values.get(oldName) match
+            case None    => row
+            case Some(v) => Row((row.values - oldName) + (newName -> v))
+        }
 
   // ---------------------------------------------------------------------------
   // Operators

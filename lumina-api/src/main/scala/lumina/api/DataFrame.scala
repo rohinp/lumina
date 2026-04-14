@@ -1,6 +1,7 @@
 package lumina.api
 
 import lumina.plan.*
+import lumina.plan.Expression.*
 import lumina.plan.backend.{Backend, BackendResult, Row}
 import scala.jdk.CollectionConverters.*
 
@@ -93,6 +94,57 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
    */
   def distinct(): DataFrame =
     DataFrame(Distinct(logicalPlan))
+
+  /**
+   * Drops one or more columns by name.  Columns that do not exist are silently
+   * ignored, matching Spark's behaviour.
+   */
+  def drop(cols: String*): DataFrame =
+    DataFrame(DropColumns(logicalPlan, cols.toVector))
+
+  /** Java/Kotlin API — pass column names as an Iterable. */
+  def drop(cols: java.lang.Iterable[String]): DataFrame =
+    import scala.jdk.CollectionConverters.*
+    DataFrame(DropColumns(logicalPlan, cols.asScala.toVector))
+
+  /**
+   * Returns a new DataFrame with the column `oldName` renamed to `newName`.
+   * If `oldName` does not exist the DataFrame is returned unchanged.
+   */
+  def withColumnRenamed(oldName: String, newName: String): DataFrame =
+    DataFrame(RenameColumn(logicalPlan, oldName, newName))
+
+  /**
+   * Drops rows that contain a null value in any of the specified columns.
+   * When no columns are specified, drops rows that contain a null in *any*
+   * column — but since schema is not always available this overload requires
+   * explicit column names.
+   *
+   * {{{
+   *   df.dropNa("email", "phone")   // drop rows where email OR phone is null
+   * }}}
+   */
+  def dropNa(cols: String*): DataFrame =
+    require(cols.nonEmpty, "dropNa requires at least one column name")
+    val condition = cols
+      .map(c => IsNotNull(ColumnRef(c)): Expression)
+      .reduce(And(_, _))
+    DataFrame(Filter(logicalPlan, condition))
+
+  /**
+   * Replaces null values in the specified columns with `value`.
+   * The fill value is coerced to match each column's runtime type via
+   * [[Coalesce]].
+   *
+   * {{{
+   *   df.fillNa(0, "revenue", "cost")   // replace nulls with 0 in those two columns
+   * }}}
+   */
+  def fillNa(value: Any, cols: String*): DataFrame =
+    require(cols.nonEmpty, "fillNa requires at least one column name")
+    cols.foldLeft(this) { (df, col) =>
+      df.withColumn(col, Coalesce(Vector(ColumnRef(col), Literal(value))))
+    }
 
   /** Executes this DataFrame's plan against the given backend and returns all result rows. */
   def collect(backend: Backend): Vector[Row] =

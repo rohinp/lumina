@@ -31,13 +31,13 @@ import lumina.plan.Expression.*
  *   Sort(Filter(child, cond), exprs)
  * }}}
  *
- * === Filter through WithColumn ===
- * When the filter condition does not reference the derived column, the filter
- * can move below the WithColumn (the derived column doesn't exist yet below).
+ * === Filter through WithColumn / DropColumns / Window ===
+ * Filters that don't reference newly introduced or removed columns are pushed
+ * below the structural node (WithColumn, DropColumns, Window).
  *
- * === Filter through Window ===
- * When the filter condition does not reference any window-computed alias,
- * the filter can move below the Window node.
+ * === Filter through RenameColumn ===
+ * When a filter references only the renamed column's *new* name, the condition
+ * is rewritten to use the old name and pushed below the rename.
  *
  * Filters above ReadCsv, Aggregate, or Join are left in place because
  * pushing through those nodes is either semantically unsafe (Aggregate)
@@ -70,6 +70,28 @@ object PredicatePushdown extends Rule:
           if referencedColumns(condition).intersect(windowExprs.map(_.alias).toSet).isEmpty =>
         Window(Filter(child, condition), windowExprs)
 
+      // A filter above a DropColumns can be pushed below it when the filter
+      // does not reference any of the dropped columns.
+      case Filter(DropColumns(child, cols), condition)
+          if referencedColumns(condition).intersect(cols.toSet).isEmpty =>
+        DropColumns(Filter(child, condition), cols)
+
+      // A filter above a RenameColumn: push below if the filter references the
+      // new name — rewrite the condition to use the old name so it can run
+      // before the rename.  If the filter doesn't touch the renamed column at
+      // all, push as-is.
+      case Filter(RenameColumn(child, oldName, newName), condition) =>
+        val refs = referencedColumns(condition)
+        if !refs.contains(newName) then
+          // filter doesn't touch the renamed column — push unchanged
+          RenameColumn(Filter(child, condition), oldName, newName)
+        else if !refs.contains(oldName) then
+          // filter references new name only — rewrite to old name and push
+          RenameColumn(Filter(child, renameIn(condition, newName, oldName)), oldName, newName)
+        else
+          // filter references both; leave in place to be safe
+          Filter(RenameColumn(child, oldName, newName), condition)
+
       case other =>
         other
 
@@ -85,6 +107,27 @@ object PredicatePushdown extends Rule:
   private def canPushThrough(condition: Expression, projected: Vector[Expression]): Boolean =
     val projectedNames = projected.collect { case ColumnRef(n) => n }.toSet
     referencedColumns(condition).subsetOf(projectedNames)
+
+  /**
+   * Rewrites every `ColumnRef(from)` inside `expr` to `ColumnRef(to)`.
+   * Used to translate a filter condition through a RenameColumn node.
+   */
+  private def renameIn(expr: Expression, from: String, to: String): Expression = expr match
+    case ColumnRef(name) if name == from => ColumnRef(to)
+    case ColumnRef(_)                    => expr
+    case Literal(_)                      => expr
+    case GreaterThan(l, r)               => GreaterThan(renameIn(l, from, to), renameIn(r, from, to))
+    case GreaterThanOrEqual(l, r)        => GreaterThanOrEqual(renameIn(l, from, to), renameIn(r, from, to))
+    case LessThan(l, r)                  => LessThan(renameIn(l, from, to), renameIn(r, from, to))
+    case LessThanOrEqual(l, r)           => LessThanOrEqual(renameIn(l, from, to), renameIn(r, from, to))
+    case EqualTo(l, r)                   => EqualTo(renameIn(l, from, to), renameIn(r, from, to))
+    case NotEqualTo(l, r)                => NotEqualTo(renameIn(l, from, to), renameIn(r, from, to))
+    case And(l, r)                       => And(renameIn(l, from, to), renameIn(r, from, to))
+    case Or(l, r)                        => Or(renameIn(l, from, to), renameIn(r, from, to))
+    case Not(e)                          => Not(renameIn(e, from, to))
+    case IsNull(e)                       => IsNull(renameIn(e, from, to))
+    case IsNotNull(e)                    => IsNotNull(renameIn(e, from, to))
+    case other                           => other  // arithmetic, string functions, etc. — recurse if needed
 
   private def referencedColumns(expr: Expression): Set[String] = expr match
     case ColumnRef(name)         => Set(name)

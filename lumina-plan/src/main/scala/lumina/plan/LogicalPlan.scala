@@ -111,3 +111,22 @@ final case class UnionAll(left: LogicalPlan, right: LogicalPlan) extends Logical
 final case class Distinct(child: LogicalPlan) extends LogicalPlan:
   override val children: Seq[LogicalPlan]  = Seq(child)
   override val outputSchema: Option[Schema] = child.outputSchema
+
+/**
+ * Removes one or more named columns from each output row.
+ *
+ * Columns that do not exist in a row are silently ignored — this matches the
+ * behaviour of Spark's `df.drop(...)`.
+ */
+final case class DropColumns(child: LogicalPlan, columns: Vector[String]) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = None  // schema shrinks; we don't track it
+
+/**
+ * Renames a single column.  If `oldName` is not present in a row the row is
+ * passed through unchanged.
+ */
+final case class RenameColumn(child: LogicalPlan, oldName: String, newName: String)
+    extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = None

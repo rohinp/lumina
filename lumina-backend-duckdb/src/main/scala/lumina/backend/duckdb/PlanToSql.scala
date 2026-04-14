@@ -78,6 +78,14 @@ object PlanToSql:
     case Distinct(child) =>
       s"SELECT DISTINCT * FROM (${render(child)}) AS _distinct"
 
+    case DropColumns(child, cols) =>
+      val excludeList = cols.map(c => s""""$c"""").mkString(", ")
+      s"SELECT * EXCLUDE ($excludeList) FROM (${render(child)}) AS _drop"
+
+    case RenameColumn(child, oldName, newName) =>
+      // Remove the old name from * and add it back under the new name.
+      s"""SELECT * EXCLUDE ("$oldName"), "$oldName" AS "$newName" FROM (${render(child)}) AS _rename"""
+
   // ---------------------------------------------------------------------------
   // Expression → SQL fragment
   // ---------------------------------------------------------------------------
