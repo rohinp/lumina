@@ -64,6 +64,9 @@ object LogicalPlanPrinter:
       val aggs   = aggregations.map(aggStr).mkString(", ")
       s"Aggregate [$groups] → [$aggs]"
 
+    case WithColumn(_, name, expr) =>
+      s"WithColumn [$name = ${exprStr(expr)}]"
+
     case Sort(_, sortExprs) =>
       val parts = sortExprs.map(se => s"${exprStr(se.expr)} ${if se.ascending then "ASC" else "DESC"}")
       s"Sort [${parts.mkString(", ")}]"
@@ -94,6 +97,12 @@ object LogicalPlanPrinter:
     case Not(e)                       => s"NOT ${exprStr(e)}"
     case IsNull(e)                    => s"${exprStr(e)} IS NULL"
     case IsNotNull(e)                 => s"${exprStr(e)} IS NOT NULL"
+    case Add(l, r)                    => s"(${exprStr(l)} + ${exprStr(r)})"
+    case Subtract(l, r)               => s"(${exprStr(l)} - ${exprStr(r)})"
+    case Multiply(l, r)               => s"(${exprStr(l)} * ${exprStr(r)})"
+    case Divide(l, r)                 => s"(${exprStr(l)} / ${exprStr(r)})"
+    case Negate(e)                    => s"-(${exprStr(e)})"
+    case Alias(e, name)               => s"${exprStr(e)} AS $name"
 
   // ---------------------------------------------------------------------------
   // Aggregation display helpers

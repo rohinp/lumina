@@ -33,6 +33,15 @@ object ExpressionEvaluator:
       case Not(e)                   => !evaluatePredicate(e, row)
       case IsNull(e)                => evaluate(e, row) == null
       case IsNotNull(e)             => evaluate(e, row) != null
+      case Add(l, r)                => toDouble(evaluate(l, row)) + toDouble(evaluate(r, row))
+      case Subtract(l, r)           => toDouble(evaluate(l, row)) - toDouble(evaluate(r, row))
+      case Multiply(l, r)           => toDouble(evaluate(l, row)) * toDouble(evaluate(r, row))
+      case Divide(l, r)             =>
+        val divisor = toDouble(evaluate(r, row))
+        if divisor == 0.0 then throw ArithmeticException("Division by zero")
+        toDouble(evaluate(l, row)) / divisor
+      case Negate(e)                => -toDouble(evaluate(e, row))
+      case Alias(e, _)              => evaluate(e, row)   // unwrap; name is used by Project
 
   /** Evaluate a predicate expression; throws if the result is not a Boolean. */
   def evaluatePredicate(expr: Expression, row: Row): Boolean =

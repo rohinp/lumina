@@ -49,6 +49,12 @@ object PredicatePushdown extends Rule:
       case Filter(Sort(child, sortExprs), condition) =>
         Sort(Filter(child, condition), sortExprs)
 
+      // A filter above a WithColumn can be pushed below it when the filter
+      // does not reference the derived column (which doesn't exist yet below).
+      case Filter(WithColumn(child, colName, expr), condition)
+          if !referencedColumns(condition).contains(colName) =>
+        WithColumn(Filter(child, condition), colName, expr)
+
       case other =>
         other
 

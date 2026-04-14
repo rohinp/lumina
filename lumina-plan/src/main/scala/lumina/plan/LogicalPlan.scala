@@ -41,6 +41,18 @@ final case class Sort(child: LogicalPlan, sortExprs: Vector[SortExpr]) extends L
 final case class SortExpr(expr: Expression, ascending: Boolean = true)
 
 /**
+ * Add or replace a single column in the output.
+ *
+ * All existing columns pass through unchanged; `expr` is evaluated per row
+ * and stored under `columnName`, overwriting any existing column with that name.
+ * This avoids needing full schema knowledge at plan construction time.
+ */
+final case class WithColumn(child: LogicalPlan, columnName: String, expr: Expression)
+    extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = child.outputSchema
+
+/**
  * Return at most `count` rows from the child plan.
  *
  * When combined with Sort, produces ordered top-N queries.

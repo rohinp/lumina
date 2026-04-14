@@ -84,7 +84,8 @@ Tests serve as the primary developer documentation for this project. Test names 
 | **M4: Explain + DuckDB Backend** | Complete | `LogicalPlanPrinter` / `DataFrame.explain()`, `lumina-backend-duckdb` with `PlanToSql` SQL translator, `DuckDBBackend` (stateless JDBC), `BackendComplianceSuite` passed, wired into `BackendRegistry.default()` |
 | **M5: Extended Operators** | Complete | `Sort`, `Limit`, `Join` (Inner/Left/Right/Full) plan nodes; `LessThan`, `GreaterThanOrEqual`, `And`, `Or`, `Not`, `IsNull`, `IsNotNull`, `NotEqualTo` expressions; `Avg`/`Min`/`Max` aggregations; all implemented in `LocalBackend` + `DuckDBBackend` with full test coverage |
 | **M6: Optimizer + Type Normalisation** | Complete | Rule-based `Optimizer` (bottom-up, composable); `CombineFilters` merges consecutive Filters into `And`; `PredicatePushdown` moves Filters below Project and Sort; `RowNormalizer` maps JDBC boxed types to Scala primitives so both backends return identical value types; optimizer wired into `LocalBackend` and `DuckDBBackend` |
-| **M7: Advanced Features** | Not started | Window functions, UDFs, predicate pushdown through Aggregate |
+| **M7: DuckDB Hardening** | Complete | Arithmetic expressions (`Add`, `Subtract`, `Multiply`, `Divide`, `Negate`); `Alias` expression; `WithColumn` plan node (add/replace column, uses `SELECT *, expr AS name` + last-wins dedup); `DataFrame.withColumn()` / `show()` / `showString()`; JOIN ON clause table-qualified to resolve ambiguous column refs; `collectRows` deduplication uses column index (not name) — last occurrence of a repeated name wins |
+| **M8: Advanced Features** | Not started | Window functions, UDFs, predicate pushdown through Aggregate |
 
 **Key DuckDB implementation notes:**
 - `PlanToSql` translates each `LogicalPlan` node to a nested SQL subquery (no CTEs, pure composable SELECTs)

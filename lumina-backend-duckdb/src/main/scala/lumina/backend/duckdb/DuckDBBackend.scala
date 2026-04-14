@@ -94,12 +94,39 @@ final class DuckDBBackend(registry: DataRegistry) extends Backend:
   private def collectRows(rs: ResultSet): Vector[Row] =
     val meta     = rs.getMetaData
     val colCount = meta.getColumnCount
-    val colNames = (1 to colCount).map(meta.getColumnName)
+    // Deduplicate column names by appending _2, _3, … for repeats.
+    // Use index-based getObject so we never look up by a potentially ambiguous name.
+    val colNames = deduplicateNames((1 to colCount).map(meta.getColumnName).toVector)
     val buf      = Vector.newBuilder[Row]
     while rs.next() do
-      val values = colNames.map(name => name -> rs.getObject(name)).toMap
+      val values = colNames.zipWithIndex.map { (name, idx) =>
+        name -> rs.getObject(idx + 1)
+      }.toMap
       buf += Row(values)
     buf.result()
+
+  /**
+   * Deduplicates column names so that no two columns in a result row share a key.
+   *
+   * The LAST occurrence of a repeated name keeps the clean key; earlier
+   * occurrences are suffixed with _1, _2, … in order.  This gives
+   * WithColumn("price", ...) replace semantics: the original "price" becomes
+   * "price_1" and the newly computed column retains the name "price".
+   */
+  private def deduplicateNames(names: Vector[String]): Vector[String] =
+    // Count occurrences to find which names are duplicated
+    val occurrences = names.groupBy(identity).map { case (k, v) => k -> v.size }
+    val counters    = scala.collection.mutable.Map.empty[String, Int]
+    names.zipWithIndex.map { (name, idx) =>
+      if occurrences(name) == 1 then name
+      else
+        val isLast = names.lastIndexOf(name) == idx
+        if isLast then name
+        else
+          val n = counters.getOrElse(name, 1)
+          counters(name) = n + 1
+          s"${name}_$n"
+    }
 
 object DuckDBBackend:
   def apply(registry: DataRegistry): DuckDBBackend = new DuckDBBackend(registry)

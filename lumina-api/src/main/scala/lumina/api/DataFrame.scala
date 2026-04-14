@@ -51,6 +51,15 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   def crossJoin(other: DataFrame): DataFrame =
     DataFrame(Join(logicalPlan, other.logicalPlan, None, JoinType.Inner))
 
+  /**
+   * Adds or replaces a column by evaluating `expr` against each row.
+   *
+   * If `name` already exists in the result the old value is overwritten;
+   * otherwise a new column is appended.
+   */
+  def withColumn(name: String, expr: Expression): DataFrame =
+    DataFrame(WithColumn(logicalPlan, name, expr))
+
   /** Executes this DataFrame's plan against the given backend and returns all result rows. */
   def collect(backend: Backend): Vector[Row] =
     backend.execute(logicalPlan) match
@@ -71,6 +80,41 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
    * Mirrors Spark's df.explain() for familiarity.
    */
   def explain(): Unit = print(explainString)
+
+  /**
+   * Executes the plan and prints the first `n` rows as a formatted ASCII table.
+   *
+   * {{{
+   * df.show(backend)
+   * // +--------+-----+---------+
+   * // | city   | age | revenue |
+   * // +--------+-----+---------+
+   * // | Paris  |  35 | 1000.0  |
+   * // | Berlin |  29 | 2000.0  |
+   * // +--------+-----+---------+
+   * // 2 rows
+   * }}}
+   */
+  def show(backend: Backend, n: Int = 20): Unit =
+    print(showString(backend, n))
+
+  /** Returns the formatted table string that [[show]] prints. */
+  def showString(backend: Backend, n: Int = 20): String =
+    val rows    = collect(backend).take(n)
+    if rows.isEmpty then
+      "++ (empty)\n"
+    else
+      val cols    = rows.head.values.keys.toVector
+      val data    = rows.map(r => cols.map(c => Option(r.values(c)).map(_.toString).getOrElse("null")))
+      val widths  = cols.zipWithIndex.map { (col, i) =>
+        math.max(col.length, data.map(_(i).length).maxOption.getOrElse(0))
+      }
+      val sep  = "+" + widths.map(w => "-" * (w + 2)).mkString("+") + "+"
+      val header = "| " + cols.zipWithIndex.map { (c, i) => c.padTo(widths(i), ' ') }.mkString(" | ") + " |"
+      val body   = data.map { row =>
+        "| " + row.zipWithIndex.map { (v, i) => v.padTo(widths(i), ' ') }.mkString(" | ") + " |"
+      }
+      (Seq(sep, header, sep) ++ body ++ Seq(sep, s"${rows.size} row(s)\n")).mkString("\n")
 
   /** Gives access to the underlying logical plan for advanced tooling. */
   def plan: LogicalPlan = logicalPlan

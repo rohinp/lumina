@@ -39,6 +39,10 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
       case Project(child, columns, _)                   => project(run(child), columns)
       case Aggregate(child, groupBy, aggregations, _)   =>
         aggregate(run(child), groupBy, aggregations)
+      case WithColumn(child, name, expr)                =>
+        run(child).map { row =>
+          Row(row.values + (name -> ExpressionEvaluator.evaluate(expr, row)))
+        }
       case Sort(child, sortExprs)                       => sort(run(child), sortExprs)
       case Limit(child, count)                          => run(child).take(count)
       case Join(left, right, condition, joinType)       =>
@@ -62,9 +66,9 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
   private def project(rows: Vector[Row], columns: Vector[Expression]): Vector[Row] =
     rows.map { row =>
       val projected = columns.map {
-        case ColumnRef(name) => name -> row.values.getOrElse(name, null)
-        case expr            =>
-          throw UnsupportedOperationException(s"Project only supports ColumnRef, got: $expr")
+        case ColumnRef(name)  => name -> row.values.getOrElse(name, null)
+        case Alias(expr, name) => name -> ExpressionEvaluator.evaluate(expr, row)
+        case expr             => nameOf(expr) -> ExpressionEvaluator.evaluate(expr, row)
       }
       Row(projected.toMap)
     }

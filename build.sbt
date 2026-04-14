@@ -40,7 +40,15 @@ lazy val luminaBackendLocal =
     "lumina-backend-local",
     // "test->test" makes lumina-plan's test classes (e.g. BackendComplianceSuite)
     // visible in this module's test scope.
-    project.in(file("lumina-backend-local")).dependsOn(luminaPlan % "compile->compile;test->test")
+    // luminaApi is added as a test-scope dependency so backend tests can use
+    // the DataFrame / Lumina API (e.g. show(), withColumn()) without adding a
+    // compile-scope dependency (which would be circular).
+    project
+      .in(file("lumina-backend-local"))
+      .dependsOn(
+        luminaPlan % "compile->compile;test->test",
+        luminaApi  % "test->compile"
+      )
   )
 
 lazy val luminaBackendDuckdb =

@@ -23,6 +23,16 @@ object Expression:
   final case class IsNull(expr: Expression)    extends Expression
   final case class IsNotNull(expr: Expression) extends Expression
 
+  // Arithmetic
+  final case class Add(left: Expression, right: Expression)      extends Expression
+  final case class Subtract(left: Expression, right: Expression) extends Expression
+  final case class Multiply(left: Expression, right: Expression) extends Expression
+  final case class Divide(left: Expression, right: Expression)   extends Expression
+  final case class Negate(expr: Expression)                      extends Expression
+
+  // Named derived column — wraps any expression and gives it an output name
+  final case class Alias(expr: Expression, name: String) extends Expression
+
 sealed trait Aggregation
 
 object Aggregation:
