@@ -68,6 +68,10 @@ object PlanToSql:
       val onClause = condition.map(c => s" ON ${joinExprSql(c, "_join_left", "_join_right")}").getOrElse("")
       s"SELECT * FROM (${render(left)}) AS _join_left $joinKeyword (${render(right)}) AS _join_right$onClause"
 
+    case Window(child, windowExprs) =>
+      val winCols = windowExprs.map(windowExprSql).mkString(", ")
+      s"SELECT *, $winCols FROM (${render(child)}) AS _window"
+
   // ---------------------------------------------------------------------------
   // Expression → SQL fragment
   // ---------------------------------------------------------------------------
@@ -105,6 +109,38 @@ object PlanToSql:
     case Avg(col, alias)         => s"AVG(${exprSql(col)})${aliasSql(alias)}"
     case Min(col, alias)         => s"MIN(${exprSql(col)})${aliasSql(alias)}"
     case Max(col, alias)         => s"MAX(${exprSql(col)})${aliasSql(alias)}"
+
+  // ---------------------------------------------------------------------------
+  // Window expression → SQL fragment
+  // ---------------------------------------------------------------------------
+
+  private def windowExprSql(we: WindowExpr): String =
+    import WindowExpr.*
+    val spec     = we.spec
+    val partPart = if spec.partitionBy.isEmpty then ""
+                   else s"PARTITION BY ${spec.partitionBy.map(exprSql).mkString(", ")} "
+    val ordPart  = if spec.orderBy.isEmpty then ""
+                   else s"ORDER BY ${spec.orderBy.map(se => s"${exprSql(se.expr)} ${if se.ascending then "ASC" else "DESC"}").mkString(", ")}"
+    val over     = s"OVER ($partPart$ordPart)"
+    val fn = we match
+      case RowNumber(alias, _)      => s"""ROW_NUMBER() $over AS "$alias""""
+      case Rank(alias, _)           => s"""RANK() $over AS "$alias""""
+      case DenseRank(alias, _)      => s"""DENSE_RANK() $over AS "$alias""""
+      case WindowAgg(agg, alias, _) => s"""${aggFnSql(agg)} $over AS "$alias""""
+      case Lag(expr, n, alias, _)   => s"""LAG(${exprSql(expr)}, $n) $over AS "$alias""""
+      case Lead(expr, n, alias, _)  => s"""LEAD(${exprSql(expr)}, $n) $over AS "$alias""""
+    fn
+
+  /** Renders an aggregation as its bare SQL function (no alias). */
+  private def aggFnSql(agg: Aggregation): String = agg match
+    case Sum(col, _)         => s"SUM(${exprSql(col)})"
+    case Count(None, _)      => s"COUNT(*)"
+    case Count(Some(col), _) => s"COUNT(${exprSql(col)})"
+    case Avg(col, _)         => s"AVG(${exprSql(col)})"
+    case Min(col, _)         => s"MIN(${exprSql(col)})"
+    case Max(col, _)         => s"MAX(${exprSql(col)})"
+
+  // ---------------------------------------------------------------------------
 
   /**
    * Like [[exprSql]] but qualifies ColumnRef nodes with a table alias so that

@@ -49,6 +49,7 @@ object Optimizer:
       case (Project(_, cols, s), Seq(c))      => Project(c, cols, s)
       case (Aggregate(_, g, a, s), Seq(c))   => Aggregate(c, g, a, s)
       case (WithColumn(_, n, e), Seq(c))      => WithColumn(c, n, e)
+      case (Window(_, exprs),    Seq(c))      => Window(c, exprs)
       case (Sort(_, exprs),     Seq(c))       => Sort(c, exprs)
       case (Limit(_, n),        Seq(c))       => Limit(c, n)
       case (Join(_, _, cond, jt), Seq(l, r)) => Join(l, r, cond, jt)

@@ -47,6 +47,8 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
       case Limit(child, count)                          => run(child).take(count)
       case Join(left, right, condition, joinType)       =>
         join(run(left), run(right), condition, joinType)
+      case Window(child, windowExprs)                  =>
+        windowExprs.foldLeft(run(child))(applyWindowExpr)
 
   // ---------------------------------------------------------------------------
   // Operators
@@ -201,6 +203,123 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
     }
 
     inner ++ leftOnly ++ rightOnly
+
+  // ---------------------------------------------------------------------------
+  // Window functions
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Applies a single WindowExpr to all rows, adding the computed column.
+   * Rows are partitioned by spec.partitionBy, sorted within each partition by
+   * spec.orderBy, and the window value is computed per row.  Input order is
+   * preserved: each row's position in the output matches its position in input.
+   */
+  private def applyWindowExpr(rows: Vector[Row], we: WindowExpr): Vector[Row] =
+    import WindowExpr.*
+    val spec = we.spec
+
+    // Tag each row with its original index so we can reassemble in input order
+    val indexed = rows.zipWithIndex
+
+    // Group into partitions; empty partitionBy = one partition containing all rows
+    val partitions = indexed.groupBy { case (row, _) =>
+      spec.partitionBy.map(ExpressionEvaluator.evaluate(_, row))
+    }
+
+    val results = new Array[Row](rows.size)
+
+    partitions.foreach { case (_, partRows) =>
+      // Sort within partition by the window's ORDER BY (stable sort preserves ties)
+      val sorted =
+        if spec.orderBy.isEmpty then partRows
+        else partRows.sortWith { case ((a, _), (b, _)) =>
+          spec.orderBy.iterator.map { se =>
+            val av = ExpressionEvaluator.evaluate(se.expr, a)
+            val bv = ExpressionEvaluator.evaluate(se.expr, b)
+            val cmp = (av, bv) match
+              case (sa: String, sb: String) => sa.compareTo(sb)
+              case _                        => toDouble(av).compareTo(toDouble(bv))
+            if se.ascending then cmp else -cmp
+          }.find(_ != 0).getOrElse(0) < 0
+        }
+
+      // Compute the window value for each row's sorted position
+      val values: IndexedSeq[Any] = we match
+        case RowNumber(_, _) =>
+          (1 to sorted.size).toVector
+
+        case Rank(_, _) =>
+          windowRank(sorted.map(_._1), spec.orderBy, dense = false)
+
+        case DenseRank(_, _) =>
+          windowRank(sorted.map(_._1), spec.orderBy, dense = true)
+
+        case WindowAgg(agg, _, _) =>
+          val v = computeWindowAgg(sorted.map(_._1), agg)
+          Vector.fill(sorted.size)(v)
+
+        case Lag(expr, offset, _, _) =>
+          sorted.indices.map { i =>
+            if i - offset < 0 then null
+            else ExpressionEvaluator.evaluate(expr, sorted(i - offset)._1)
+          }
+
+        case Lead(expr, offset, _, _) =>
+          sorted.indices.map { i =>
+            if i + offset >= sorted.size then null
+            else ExpressionEvaluator.evaluate(expr, sorted(i + offset)._1)
+          }
+
+      // Write each computed value back to the slot of the row's original index
+      sorted.zip(values).foreach { case ((row, origIdx), v) =>
+        results(origIdx) = Row(row.values + (we.alias -> v))
+      }
+    }
+
+    results.toVector
+
+  /**
+   * Computes RANK or DENSE_RANK values for rows that are already sorted within
+   * their partition.  Ties (identical ORDER BY keys) receive the same rank.
+   */
+  private def windowRank(
+      sortedRows: Vector[Row],
+      orderBy: Vector[SortExpr],
+      dense: Boolean
+  ): Vector[Int] =
+    if sortedRows.isEmpty then return Vector.empty
+    val result  = new Array[Int](sortedRows.size)
+    var i       = 0
+    var rank    = 1
+    while i < sortedRows.size do
+      // Find the end of the current tie group
+      val keys = orderBy.map(se => ExpressionEvaluator.evaluate(se.expr, sortedRows(i)))
+      var j = i
+      while j < sortedRows.size && orderBy.indices.forall { k =>
+        ExpressionEvaluator.evaluate(orderBy(k).expr, sortedRows(j)) == keys(k)
+      } do
+        result(j) = rank
+        j += 1
+      rank    = if dense then rank + 1 else rank + (j - i)
+      i       = j
+    result.toVector
+
+  /** Applies an aggregate function over the entire partition (whole-partition window). */
+  private def computeWindowAgg(rows: Vector[Row], agg: Aggregation): Any =
+    agg match
+      case Sum(col, _)         =>
+        rows.map(r => toDouble(ExpressionEvaluator.evaluate(col, r))).sum
+      case Count(None, _)      =>
+        rows.size.toLong
+      case Count(Some(col), _) =>
+        rows.count(r => ExpressionEvaluator.evaluate(col, r) != null).toLong
+      case Avg(col, _)         =>
+        val vals = rows.map(r => toDouble(ExpressionEvaluator.evaluate(col, r)))
+        if vals.isEmpty then 0.0 else vals.sum / vals.size
+      case Min(col, _)         =>
+        rows.map(r => ExpressionEvaluator.evaluate(col, r)).minBy(v => toDouble(v))
+      case Max(col, _)         =>
+        rows.map(r => ExpressionEvaluator.evaluate(col, r)).maxBy(v => toDouble(v))
 
   // ---------------------------------------------------------------------------
   // Helpers

@@ -60,6 +60,25 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   def withColumn(name: String, expr: Expression): DataFrame =
     DataFrame(WithColumn(logicalPlan, name, expr))
 
+  /**
+   * Appends one or more window-function columns to each row without changing
+   * the row count.  Each [[WindowExpr]] contributes exactly one output column
+   * (named by its `alias` field).
+   *
+   * Scala API — pass expressions as varargs:
+   * {{{
+   *   df.window(
+   *     WindowExpr.RowNumber("rn", WindowSpec(partitionBy = Vector(col("city")), orderBy = Vector(Lumina.asc(col("revenue")))))
+   *   )
+   * }}}
+   */
+  def window(windowExprs: WindowExpr*): DataFrame =
+    DataFrame(Window(logicalPlan, windowExprs.toVector))
+
+  /** Java/Kotlin API — pass expressions as an Iterable. */
+  def window(windowExprs: java.lang.Iterable[WindowExpr]): DataFrame =
+    DataFrame(Window(logicalPlan, windowExprs.asScala.toVector))
+
   /** Executes this DataFrame's plan against the given backend and returns all result rows. */
   def collect(backend: Backend): Vector[Row] =
     backend.execute(logicalPlan) match

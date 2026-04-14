@@ -67,6 +67,10 @@ object LogicalPlanPrinter:
     case WithColumn(_, name, expr) =>
       s"WithColumn [$name = ${exprStr(expr)}]"
 
+    case Window(_, windowExprs) =>
+      val parts = windowExprs.map(windowExprStr).mkString(", ")
+      s"Window [$parts]"
+
     case Sort(_, sortExprs) =>
       val parts = sortExprs.map(se => s"${exprStr(se.expr)} ${if se.ascending then "ASC" else "DESC"}")
       s"Sort [${parts.mkString(", ")}]"
@@ -107,6 +111,20 @@ object LogicalPlanPrinter:
   // ---------------------------------------------------------------------------
   // Aggregation display helpers
   // ---------------------------------------------------------------------------
+
+  private def windowExprStr(we: WindowExpr): String =
+    import WindowExpr.*
+    val spec = we.spec
+    val partStr = if spec.partitionBy.isEmpty then "" else s" PARTITION BY ${spec.partitionBy.map(exprStr).mkString(", ")}"
+    val ordStr  = if spec.orderBy.isEmpty then "" else s" ORDER BY ${spec.orderBy.map(se => s"${exprStr(se.expr)} ${if se.ascending then "ASC" else "DESC"}").mkString(", ")}"
+    val over    = s"OVER ($partStr$ordStr)".trim
+    we match
+      case RowNumber(alias, _)       => s"ROW_NUMBER() $over AS $alias"
+      case Rank(alias, _)            => s"RANK() $over AS $alias"
+      case DenseRank(alias, _)       => s"DENSE_RANK() $over AS $alias"
+      case WindowAgg(agg, alias, _)  => s"${aggStr(agg)} $over AS $alias"
+      case Lag(expr, n, alias, _)    => s"LAG(${exprStr(expr)}, $n) $over AS $alias"
+      case Lead(expr, n, alias, _)   => s"LEAD(${exprStr(expr)}, $n) $over AS $alias"
 
   private def aggStr(agg: Aggregation): String = agg match
     case Sum(col, alias)         => s"SUM(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"

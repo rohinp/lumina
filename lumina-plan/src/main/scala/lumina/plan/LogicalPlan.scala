@@ -66,6 +66,17 @@ enum JoinType:
   case Inner, Left, Right, Full
 
 /**
+ * Adds one or more window-function columns to each row without changing the
+ * row count.  Each [[WindowExpr]] contributes exactly one output column.
+ *
+ * The child plan's output schema is preserved; the window columns are appended.
+ */
+final case class Window(child: LogicalPlan, windowExprs: Vector[WindowExpr])
+    extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = child.outputSchema
+
+/**
  * Combine two input plans on an optional join condition.
  *
  * A `None` condition performs a cross join. For `Left`, `Right`, and `Full`
