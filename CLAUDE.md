@@ -83,7 +83,8 @@ Tests serve as the primary developer documentation for this project. Test names 
 | **M3: Multi-language Support** | Complete | `LuminaJava` facade, `Row.of(key,val,...)` varargs factory, `Aggregation.sum/count` Java factories, `Iterable`-based overloads on `DataFrame`; integration tests compile and execute full pipelines from Java and Kotlin |
 | **M4: Explain + DuckDB Backend** | Complete | `LogicalPlanPrinter` / `DataFrame.explain()`, `lumina-backend-duckdb` with `PlanToSql` SQL translator, `DuckDBBackend` (stateless JDBC), `BackendComplianceSuite` passed, wired into `BackendRegistry.default()` |
 | **M5: Extended Operators** | Complete | `Sort`, `Limit`, `Join` (Inner/Left/Right/Full) plan nodes; `LessThan`, `GreaterThanOrEqual`, `And`, `Or`, `Not`, `IsNull`, `IsNotNull`, `NotEqualTo` expressions; `Avg`/`Min`/`Max` aggregations; all implemented in `LocalBackend` + `DuckDBBackend` with full test coverage |
-| **M6: Performance & Advanced Features** | Not started | Predicate pushdown, UDFs, window functions, columnar execution |
+| **M6: Optimizer + Type Normalisation** | Complete | Rule-based `Optimizer` (bottom-up, composable); `CombineFilters` merges consecutive Filters into `And`; `PredicatePushdown` moves Filters below Project and Sort; `RowNormalizer` maps JDBC boxed types to Scala primitives so both backends return identical value types; optimizer wired into `LocalBackend` and `DuckDBBackend` |
+| **M7: Advanced Features** | Not started | Window functions, UDFs, predicate pushdown through Aggregate |
 
 **Key DuckDB implementation notes:**
 - `PlanToSql` translates each `LogicalPlan` node to a nested SQL subquery (no CTEs, pure composable SELECTs)

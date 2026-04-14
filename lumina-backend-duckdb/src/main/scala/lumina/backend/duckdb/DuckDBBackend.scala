@@ -3,7 +3,8 @@ package lumina.backend.duckdb
 import lumina.plan.*
 import lumina.plan.backend.{Backend, BackendResult, DataRegistry, Row}
 
-import lumina.plan.backend.BackendCapabilities
+import lumina.plan.backend.{BackendCapabilities, RowNormalizer}
+import lumina.plan.optimizer.Optimizer
 import java.sql.{Connection, DriverManager, ResultSet}
 
 /**
@@ -34,12 +35,13 @@ final class DuckDBBackend(registry: DataRegistry) extends Backend:
   )
 
   override def execute(plan: LogicalPlan): BackendResult =
+    val optimized = Optimizer.optimize(plan)
     val conn = DriverManager.getConnection("jdbc:duckdb:")
     try
       createTables(conn)
-      val sql = PlanToSql.toSql(plan)
-      val rs  = conn.createStatement().executeQuery(sql)
-      BackendResult.InMemory(collectRows(rs))
+      val sql  = PlanToSql.toSql(optimized)
+      val rs   = conn.createStatement().executeQuery(sql)
+      BackendResult.InMemory(RowNormalizer.normalizeAll(collectRows(rs)))
     finally
       conn.close()
 

@@ -117,7 +117,8 @@ class DuckDBBackendM5Spec extends FunSuite:
       schema       = None
     )
     val berlin = rows(plan).find(_.values("city") == "Berlin").get
-    assertEquals(berlin.values("min_age").asInstanceOf[Integer].intValue(), 22)
+    // RowNormalizer converts JDBC Integer to Scala Int
+    assertEquals(berlin.values("min_age").asInstanceOf[Int], 22)
 
   test("Max aggregation executed via DuckDB returns the maximum value per group"):
     val plan = Aggregate(

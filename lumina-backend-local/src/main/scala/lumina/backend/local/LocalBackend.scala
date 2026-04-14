@@ -4,6 +4,7 @@ import lumina.plan.*
 import lumina.plan.Expression.*
 import lumina.plan.Aggregation.*
 import lumina.plan.backend.*
+import lumina.plan.optimizer.Optimizer
 
 /**
  * Pure-Scala, in-memory execution backend.
@@ -25,7 +26,7 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
   )
 
   override def execute(plan: LogicalPlan): BackendResult =
-    BackendResult.InMemory(run(plan))
+    BackendResult.InMemory(run(Optimizer.optimize(plan)))
 
   // ---------------------------------------------------------------------------
   // Plan interpreter
