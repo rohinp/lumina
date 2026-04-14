@@ -9,9 +9,11 @@ import lumina.plan.Aggregation.*
  * Output format (Spark-inspired):
  * {{{
  * == Logical Plan ==
- * Aggregate [city] → [SUM(revenue) AS total_revenue]
- * +- Filter (age > 30)
- *    +- ReadCsv [memory://customers] schema=[city:StringType, age:Int32, revenue:Float64]
+ * Limit 10
+ * +- Sort [age ASC, revenue DESC]
+ *    +- Aggregate [city] → [SUM(revenue) AS total_revenue]
+ *       +- Filter (age > 30)
+ *          +- ReadCsv [memory://customers] schema=[city:StringType, age:Int32, revenue:Float64]
  * }}}
  *
  * Use [[LogicalPlanPrinter.explain]] to produce the full string, or call
@@ -35,9 +37,8 @@ object LogicalPlanPrinter:
       prefix: String,
       isRoot: Boolean
   ): Unit =
-    val connector = if isRoot then "" else "+- "
+    val connector  = if isRoot then "" else "+- "
     sb.append(prefix).append(connector).append(describe(plan)).append("\n")
-
     val childPrefix = if isRoot then "   " else prefix + "   "
     plan.children.foreach(renderNode(_, sb, childPrefix, isRoot = false))
 
@@ -63,18 +64,45 @@ object LogicalPlanPrinter:
       val aggs   = aggregations.map(aggStr).mkString(", ")
       s"Aggregate [$groups] → [$aggs]"
 
+    case Sort(_, sortExprs) =>
+      val parts = sortExprs.map(se => s"${exprStr(se.expr)} ${if se.ascending then "ASC" else "DESC"}")
+      s"Sort [${parts.mkString(", ")}]"
+
+    case Limit(_, count) =>
+      s"Limit $count"
+
+    case Join(_, _, condition, joinType) =>
+      val condStr = condition.map(c => s" ON ${exprStr(c)}").getOrElse(" (cross)")
+      s"Join ${joinType.toString.toUpperCase}$condStr"
+
   // ---------------------------------------------------------------------------
-  // Expression and aggregation display helpers
+  // Expression display helpers
   // ---------------------------------------------------------------------------
 
-  private def exprStr(expr: Expression): String = expr match
-    case ColumnRef(name)       => name
-    case Literal(v: String)    => s"'$v'"
-    case Literal(v)            => v.toString
-    case GreaterThan(l, r)     => s"${exprStr(l)} > ${exprStr(r)}"
-    case EqualTo(l, r)         => s"${exprStr(l)} = ${exprStr(r)}"
+  private[plan] def exprStr(expr: Expression): String = expr match
+    case ColumnRef(name)              => name
+    case Literal(v: String)           => s"'$v'"
+    case Literal(v)                   => v.toString
+    case GreaterThan(l, r)            => s"${exprStr(l)} > ${exprStr(r)}"
+    case GreaterThanOrEqual(l, r)     => s"${exprStr(l)} >= ${exprStr(r)}"
+    case LessThan(l, r)               => s"${exprStr(l)} < ${exprStr(r)}"
+    case LessThanOrEqual(l, r)        => s"${exprStr(l)} <= ${exprStr(r)}"
+    case EqualTo(l, r)                => s"${exprStr(l)} = ${exprStr(r)}"
+    case NotEqualTo(l, r)             => s"${exprStr(l)} != ${exprStr(r)}"
+    case And(l, r)                    => s"(${exprStr(l)} AND ${exprStr(r)})"
+    case Or(l, r)                     => s"(${exprStr(l)} OR ${exprStr(r)})"
+    case Not(e)                       => s"NOT ${exprStr(e)}"
+    case IsNull(e)                    => s"${exprStr(e)} IS NULL"
+    case IsNotNull(e)                 => s"${exprStr(e)} IS NOT NULL"
+
+  // ---------------------------------------------------------------------------
+  // Aggregation display helpers
+  // ---------------------------------------------------------------------------
 
   private def aggStr(agg: Aggregation): String = agg match
     case Sum(col, alias)         => s"SUM(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
     case Count(None, alias)      => s"COUNT(*)${alias.map(a => s" AS $a").getOrElse("")}"
     case Count(Some(col), alias) => s"COUNT(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Avg(col, alias)         => s"AVG(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Min(col, alias)         => s"MIN(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Max(col, alias)         => s"MAX(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"

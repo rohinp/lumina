@@ -128,6 +128,38 @@ class LogicalPlanPrinterSpec extends FunSuite:
     assert(aggregateLine < filterLine, "Aggregate must appear before Filter")
     assert(filterLine    < readLine,   "Filter must appear before ReadCsv")
 
+  // ---------------------------------------------------------------------------
+  // Sort, Limit, Join
+  // ---------------------------------------------------------------------------
+
+  test("Sort node shows the sort expressions and directions"):
+    val plan = Sort(
+      ReadCsv("data.csv", None),
+      Vector(SortExpr(ColumnRef("age"), ascending = true), SortExpr(ColumnRef("revenue"), ascending = false))
+    )
+    val output = LogicalPlanPrinter.explain(plan)
+    assert(output.contains("Sort [age ASC, revenue DESC]"), output)
+
+  test("Limit node shows the row count"):
+    val plan   = Limit(ReadCsv("data.csv", None), 10)
+    val output = LogicalPlanPrinter.explain(plan)
+    assert(output.contains("Limit 10"), output)
+
+  test("Join node shows the join type and condition"):
+    val plan = Join(
+      ReadCsv("a.csv", None),
+      ReadCsv("b.csv", None),
+      condition = Some(EqualTo(ColumnRef("id"), ColumnRef("ref_id"))),
+      joinType  = JoinType.Inner
+    )
+    val output = LogicalPlanPrinter.explain(plan)
+    assert(output.contains("Join INNER"), output)
+    assert(output.contains("id = ref_id"), output)
+
+  // ---------------------------------------------------------------------------
+  // Tree structure — nested pipelines
+  // ---------------------------------------------------------------------------
+
   test("child nodes are indented relative to their parent"):
     val plan = Filter(
       ReadCsv("data.csv", None),

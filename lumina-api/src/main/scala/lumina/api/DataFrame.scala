@@ -27,6 +27,30 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   def groupBy(grouping: java.lang.Iterable[Expression], aggregations: java.lang.Iterable[Aggregation]): DataFrame =
     groupBy(grouping.asScala.toSeq, aggregations.asScala.toSeq)
 
+  /** Returns a new DataFrame sorted by the supplied sort expressions (Scala API). */
+  def sort(sortExprs: SortExpr*): DataFrame =
+    DataFrame(Sort(logicalPlan, sortExprs.toVector))
+
+  /** Returns a new DataFrame sorted by the supplied sort expressions (Java/Kotlin API). */
+  def sort(sortExprs: java.lang.Iterable[SortExpr]): DataFrame =
+    DataFrame(Sort(logicalPlan, sortExprs.asScala.toVector))
+
+  /** Returns a new DataFrame with at most `n` rows. */
+  def limit(n: Int): DataFrame =
+    DataFrame(Limit(logicalPlan, n))
+
+  /** Joins this DataFrame with another using an inner join (Scala API). */
+  def join(other: DataFrame, condition: Expression): DataFrame =
+    DataFrame(Join(logicalPlan, other.logicalPlan, Some(condition), JoinType.Inner))
+
+  /** Joins this DataFrame with another using the specified join type (Scala API). */
+  def join(other: DataFrame, condition: Expression, joinType: JoinType): DataFrame =
+    DataFrame(Join(logicalPlan, other.logicalPlan, Some(condition), joinType))
+
+  /** Cross-joins this DataFrame with another (no condition). */
+  def crossJoin(other: DataFrame): DataFrame =
+    DataFrame(Join(logicalPlan, other.logicalPlan, None, JoinType.Inner))
+
   /** Executes this DataFrame's plan against the given backend and returns all result rows. */
   def collect(backend: Backend): Vector[Row] =
     backend.execute(logicalPlan) match
@@ -68,3 +92,7 @@ object Lumina:
 
   def readCsv(path: String, schema: Option[Schema]): DataFrame =
     DataFrame(ReadCsv(path, schema))
+
+  /** Convenience sort-expression builders. */
+  def asc(expr: Expression): SortExpr  = SortExpr(expr, ascending = true)
+  def desc(expr: Expression): SortExpr = SortExpr(expr, ascending = false)

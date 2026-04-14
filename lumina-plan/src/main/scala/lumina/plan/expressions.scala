@@ -4,29 +4,44 @@ sealed trait Expression
 
 object Expression:
   final case class ColumnRef(name: String) extends Expression
-  final case class Literal(value: Any) extends Expression
-  final case class GreaterThan(left: Expression, right: Expression) extends Expression
-  final case class EqualTo(left: Expression, right: Expression) extends Expression
+  final case class Literal(value: Any)     extends Expression
+
+  // Comparison
+  final case class GreaterThan(left: Expression, right: Expression)        extends Expression
+  final case class GreaterThanOrEqual(left: Expression, right: Expression) extends Expression
+  final case class LessThan(left: Expression, right: Expression)           extends Expression
+  final case class LessThanOrEqual(left: Expression, right: Expression)    extends Expression
+  final case class EqualTo(left: Expression, right: Expression)            extends Expression
+  final case class NotEqualTo(left: Expression, right: Expression)         extends Expression
+
+  // Logical combinators
+  final case class And(left: Expression, right: Expression) extends Expression
+  final case class Or(left: Expression, right: Expression)  extends Expression
+  final case class Not(expr: Expression)                    extends Expression
+
+  // Null checks
+  final case class IsNull(expr: Expression)    extends Expression
+  final case class IsNotNull(expr: Expression) extends Expression
 
 sealed trait Aggregation
 
 object Aggregation:
-  final case class Sum(column: Expression, alias: Option[String] = None) extends Aggregation
+  final case class Sum(column: Expression,  alias: Option[String] = None) extends Aggregation
   final case class Count(column: Option[Expression], alias: Option[String] = None) extends Aggregation
-
-  // Java/Kotlin-friendly factories — avoid exposing Option in the external API.
+  final case class Avg(column: Expression,  alias: Option[String] = None) extends Aggregation
+  final case class Min(column: Expression,  alias: Option[String] = None) extends Aggregation
+  final case class Max(column: Expression,  alias: Option[String] = None) extends Aggregation
 
   // Java/Kotlin-friendly factories — return Aggregation (not the subtype) so
   // java.util.List.of(Aggregation.sum(...)) infers List<Aggregation> in Kotlin.
 
-  /** Sum a column, giving the result a specific alias. */
-  def sum(column: Expression, alias: String): Aggregation = Sum(column, Some(alias))
-
-  /** Sum a column with no alias (output column name defaults to the column name). */
-  def sum(column: Expression): Aggregation = Sum(column, None)
-
-  /** Count all rows in each group, giving the result a specific alias. */
-  def countAll(alias: String): Aggregation = Count(None, Some(alias))
-
-  /** Count non-null values of a column in each group, giving the result a specific alias. */
+  def sum(column: Expression, alias: String): Aggregation  = Sum(column, Some(alias))
+  def sum(column: Expression): Aggregation                 = Sum(column, None)
+  def avg(column: Expression, alias: String): Aggregation  = Avg(column, Some(alias))
+  def avg(column: Expression): Aggregation                 = Avg(column, None)
+  def min(column: Expression, alias: String): Aggregation  = Min(column, Some(alias))
+  def min(column: Expression): Aggregation                 = Min(column, None)
+  def max(column: Expression, alias: String): Aggregation  = Max(column, Some(alias))
+  def max(column: Expression): Aggregation                 = Max(column, None)
+  def countAll(alias: String): Aggregation                 = Count(None, Some(alias))
   def count(column: Expression, alias: String): Aggregation = Count(Some(column), Some(alias))

@@ -40,7 +40,8 @@ Lumina separates the **Interface** (user code) from the **Implementation** (exec
 | M2 — Backend Contract + Registry | ✅ Complete | `LocalBackend` (pure-Scala executor), `DataRegistry`, `CsvLoader`, `BackendRegistry`, `LuminaSession`, `PolarsBackend`/`SparkBackend` stubs |
 | M3 — Multi-language Support | ✅ Complete | `LuminaJava` facade, `Row.of(...)` varargs factory, `Aggregation` Java factories, `Iterable`-based overloads; integration tests compile **and execute** pipelines from Java and Kotlin |
 | M4 — Explain + DuckDB Backend | ✅ Complete | `LogicalPlanPrinter` / `DataFrame.explain()`, `DuckDBBackend` with `PlanToSql` SQL translator, `BackendComplianceSuite` passed, wired into `BackendRegistry.default()` |
-| M5 — Advanced Features | 🔜 Planned | Joins, window functions, UDFs, predicate pushdown |
+| M5 — Extended Operators | ✅ Complete | `Sort`, `Limit`, `Join` (Inner/Left/Right/Full); `LessThan`, `And`, `Or`, `Not`, `IsNull`, `NotEqualTo`; `Avg`/`Min`/`Max`; implemented in LocalBackend + DuckDB |
+| M6 — Advanced Features | 🔜 Planned | Predicate pushdown, UDFs, window functions |
 
 ---
 

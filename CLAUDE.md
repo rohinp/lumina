@@ -82,7 +82,8 @@ Tests serve as the primary developer documentation for this project. Test names 
 | **M2: Backend Contract + Registry** | Complete | `LocalBackend` (pure-Scala executor), `DataRegistry`, `CsvLoader`, `BackendRegistry`, `LuminaSession`; `PolarsBackend`/`SparkBackend` are UnsupportedOperation stubs |
 | **M3: Multi-language Support** | Complete | `LuminaJava` facade, `Row.of(key,val,...)` varargs factory, `Aggregation.sum/count` Java factories, `Iterable`-based overloads on `DataFrame`; integration tests compile and execute full pipelines from Java and Kotlin |
 | **M4: Explain + DuckDB Backend** | Complete | `LogicalPlanPrinter` / `DataFrame.explain()`, `lumina-backend-duckdb` with `PlanToSql` SQL translator, `DuckDBBackend` (stateless JDBC), `BackendComplianceSuite` passed, wired into `BackendRegistry.default()` |
-| **M5: Performance & Advanced Features** | Not started | Joins, windows, UDFs, predicate pushdown, columnar execution |
+| **M5: Extended Operators** | Complete | `Sort`, `Limit`, `Join` (Inner/Left/Right/Full) plan nodes; `LessThan`, `GreaterThanOrEqual`, `And`, `Or`, `Not`, `IsNull`, `IsNotNull`, `NotEqualTo` expressions; `Avg`/`Min`/`Max` aggregations; all implemented in `LocalBackend` + `DuckDBBackend` with full test coverage |
+| **M6: Performance & Advanced Features** | Not started | Predicate pushdown, UDFs, window functions, columnar execution |
 
 **Key DuckDB implementation notes:**
 - `PlanToSql` translates each `LogicalPlan` node to a nested SQL subquery (no CTEs, pure composable SELECTs)

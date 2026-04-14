@@ -6,17 +6,17 @@ sealed trait LogicalPlan:
   def outputSchema: Option[Schema]
 
 final case class ReadCsv(path: String, schema: Option[Schema]) extends LogicalPlan:
-  override val children: Seq[LogicalPlan] = Seq.empty
+  override val children: Seq[LogicalPlan]  = Seq.empty
   override val outputSchema: Option[Schema] = schema
+
+final case class Filter(child: LogicalPlan, condition: Expression) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = child.outputSchema
 
 final case class Project(child: LogicalPlan, columns: Vector[Expression], schema: Option[Schema])
     extends LogicalPlan:
-  override val children: Seq[LogicalPlan] = Seq(child)
+  override val children: Seq[LogicalPlan]  = Seq(child)
   override val outputSchema: Option[Schema] = schema.orElse(child.outputSchema)
-
-final case class Filter(child: LogicalPlan, condition: Expression) extends LogicalPlan:
-  override val children: Seq[LogicalPlan] = Seq(child)
-  override val outputSchema: Option[Schema] = child.outputSchema
 
 final case class Aggregate(
     child: LogicalPlan,
@@ -24,5 +24,47 @@ final case class Aggregate(
     aggregations: Vector[Aggregation],
     schema: Option[Schema]
 ) extends LogicalPlan:
-  override val children: Seq[LogicalPlan] = Seq(child)
+  override val children: Seq[LogicalPlan]  = Seq(child)
   override val outputSchema: Option[Schema] = schema
+
+/**
+ * Sort rows by one or more expressions.
+ *
+ * @param sortExprs ordered list of (expression, ascending) pairs; first entry
+ *                  is the primary sort key, subsequent entries break ties.
+ */
+final case class Sort(child: LogicalPlan, sortExprs: Vector[SortExpr]) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = child.outputSchema
+
+/** A single sort key with direction. */
+final case class SortExpr(expr: Expression, ascending: Boolean = true)
+
+/**
+ * Return at most `count` rows from the child plan.
+ *
+ * When combined with Sort, produces ordered top-N queries.
+ */
+final case class Limit(child: LogicalPlan, count: Int) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = child.outputSchema
+
+/** How columns are matched when joining two datasets. */
+enum JoinType:
+  case Inner, Left, Right, Full
+
+/**
+ * Combine two input plans on an optional join condition.
+ *
+ * A `None` condition performs a cross join. For `Left`, `Right`, and `Full`
+ * outer joins, rows with no match on the corresponding side are filled with
+ * `null` values.
+ */
+final case class Join(
+    left: LogicalPlan,
+    right: LogicalPlan,
+    condition: Option[Expression],
+    joinType: JoinType
+) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(left, right)
+  override val outputSchema: Option[Schema] = None
