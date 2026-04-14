@@ -31,6 +31,14 @@ import lumina.plan.Expression.*
  *   Sort(Filter(child, cond), exprs)
  * }}}
  *
+ * === Filter through WithColumn ===
+ * When the filter condition does not reference the derived column, the filter
+ * can move below the WithColumn (the derived column doesn't exist yet below).
+ *
+ * === Filter through Window ===
+ * When the filter condition does not reference any window-computed alias,
+ * the filter can move below the Window node.
+ *
  * Filters above ReadCsv, Aggregate, or Join are left in place because
  * pushing through those nodes is either semantically unsafe (Aggregate)
  * or already handled by the query engine (ReadCsv in DuckDB).
@@ -54,6 +62,13 @@ object PredicatePushdown extends Rule:
       case Filter(WithColumn(child, colName, expr), condition)
           if !referencedColumns(condition).contains(colName) =>
         WithColumn(Filter(child, condition), colName, expr)
+
+      // A filter above a Window can be pushed below it when the filter does
+      // not reference any window-computed alias (those columns don't exist
+      // below the Window node).
+      case Filter(Window(child, windowExprs), condition)
+          if referencedColumns(condition).intersect(windowExprs.map(_.alias).toSet).isEmpty =>
+        Window(Filter(child, condition), windowExprs)
 
       case other =>
         other
@@ -85,3 +100,9 @@ object PredicatePushdown extends Rule:
     case Not(e)                  => referencedColumns(e)
     case IsNull(e)               => referencedColumns(e)
     case IsNotNull(e)            => referencedColumns(e)
+    case Add(l, r)               => referencedColumns(l) ++ referencedColumns(r)
+    case Subtract(l, r)          => referencedColumns(l) ++ referencedColumns(r)
+    case Multiply(l, r)          => referencedColumns(l) ++ referencedColumns(r)
+    case Divide(l, r)            => referencedColumns(l) ++ referencedColumns(r)
+    case Negate(e)               => referencedColumns(e)
+    case Alias(e, _)             => referencedColumns(e)

@@ -53,4 +53,6 @@ object Optimizer:
       case (Sort(_, exprs),     Seq(c))       => Sort(c, exprs)
       case (Limit(_, n),        Seq(c))       => Limit(c, n)
       case (Join(_, _, cond, jt), Seq(l, r)) => Join(l, r, cond, jt)
+      case (UnionAll(_, _),       Seq(l, r)) => UnionAll(l, r)
+      case (Distinct(_),          Seq(c))    => Distinct(c)
       case _                                  => plan   // unknown shape, leave intact

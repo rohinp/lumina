@@ -72,6 +72,12 @@ object PlanToSql:
       val winCols = windowExprs.map(windowExprSql).mkString(", ")
       s"SELECT *, $winCols FROM (${render(child)}) AS _window"
 
+    case UnionAll(left, right) =>
+      s"SELECT * FROM ((${render(left)}) UNION ALL (${render(right)})) AS _union"
+
+    case Distinct(child) =>
+      s"SELECT DISTINCT * FROM (${render(child)}) AS _distinct"
+
   // ---------------------------------------------------------------------------
   // Expression → SQL fragment
   // ---------------------------------------------------------------------------

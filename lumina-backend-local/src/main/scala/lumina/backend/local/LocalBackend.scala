@@ -49,6 +49,15 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
         join(run(left), run(right), condition, joinType)
       case Window(child, windowExprs)                  =>
         windowExprs.foldLeft(run(child))(applyWindowExpr)
+      case UnionAll(left, right)                       =>
+        run(left) ++ run(right)
+      case Distinct(child)                             =>
+        // Deduplicate by the full row values map; preserves first occurrence.
+        run(child).foldLeft((Vector.empty[Row], Set.empty[Map[String, Any]])) {
+          case ((acc, seen), row) =>
+            if seen.contains(row.values) then (acc, seen)
+            else (acc :+ row, seen + row.values)
+        }._1
 
   // ---------------------------------------------------------------------------
   // Operators

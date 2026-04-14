@@ -3,6 +3,7 @@ package lumina.plan.optimizer
 import munit.FunSuite
 import lumina.plan.*
 import lumina.plan.Expression.*
+import lumina.plan.WindowExpr
 
 /**
  * Tests for the PredicatePushdown rewrite rule.
@@ -83,6 +84,32 @@ class PredicatePushdownSpec extends FunSuite:
     val plan   = Filter(base, GreaterThan(ColumnRef("age"), Literal(30)))
     val result = PredicatePushdown(plan)
     assertEquals(result, plan)
+
+  // ---------------------------------------------------------------------------
+  // Filter through Window
+  // ---------------------------------------------------------------------------
+
+  test("a Filter on a non-window column is pushed below the Window node"):
+    val spec = WindowSpec(orderBy = Vector(SortExpr(ColumnRef("revenue"), ascending = true)))
+    val plan = Filter(
+      Window(base, Vector(WindowExpr.RowNumber("rn", spec))),
+      GreaterThan(ColumnRef("revenue"), Literal(1000))  // revenue is not a window alias
+    )
+    val result = PredicatePushdown(plan)
+    result match
+      case Window(Filter(ReadCsv(_, _), _), _) => () // filter pushed below Window
+      case other => fail(s"Expected filter pushed below Window, got: $other")
+
+  test("a Filter referencing a window alias stays above the Window node"):
+    val spec = WindowSpec(orderBy = Vector(SortExpr(ColumnRef("revenue"), ascending = true)))
+    val plan = Filter(
+      Window(base, Vector(WindowExpr.RowNumber("rn", spec))),
+      GreaterThan(ColumnRef("rn"), Literal(2))  // rn is a window alias
+    )
+    val result = PredicatePushdown(plan)
+    result match
+      case Filter(Window(_, _), _) => () // filter stays above Window
+      case other => fail(s"Expected Filter above Window, got: $other")
 
   // ---------------------------------------------------------------------------
   // Full optimizer pipeline

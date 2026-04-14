@@ -102,6 +102,22 @@ class PlanToSqlSpec extends FunSuite:
     assert(!sql.contains("GROUP BY"), sql)
 
   // ---------------------------------------------------------------------------
+  // UnionAll and Distinct
+  // ---------------------------------------------------------------------------
+
+  test("UnionAll wraps both children with UNION ALL and a surrounding SELECT"):
+    val plan = UnionAll(ReadCsv("memory://a", None), ReadCsv("memory://b", None))
+    val sql  = PlanToSql.toSql(plan)
+    assert(sql.contains("UNION ALL"), sql)
+    assert(sql.contains("_union"), sql)
+
+  test("Distinct uses SELECT DISTINCT * from a subquery"):
+    val plan = Distinct(ReadCsv("memory://t", None))
+    val sql  = PlanToSql.toSql(plan)
+    assert(sql.startsWith("SELECT DISTINCT *"), sql)
+    assert(sql.contains("_distinct"), sql)
+
+  // ---------------------------------------------------------------------------
   // Helper — access package-private method for expression tests
   // ---------------------------------------------------------------------------
 

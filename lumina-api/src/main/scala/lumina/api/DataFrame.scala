@@ -79,6 +79,21 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   def window(windowExprs: java.lang.Iterable[WindowExpr]): DataFrame =
     DataFrame(Window(logicalPlan, windowExprs.asScala.toVector))
 
+  /**
+   * Concatenates all rows from this DataFrame and `other` without removing
+   * duplicates.  Both DataFrames must have the same column names.
+   */
+  def unionAll(other: DataFrame): DataFrame =
+    DataFrame(UnionAll(logicalPlan, other.logicalPlan))
+
+  /**
+   * Returns a new DataFrame with duplicate rows removed.
+   *
+   * Two rows are considered duplicates when all column values are equal.
+   */
+  def distinct(): DataFrame =
+    DataFrame(Distinct(logicalPlan))
+
   /** Executes this DataFrame's plan against the given backend and returns all result rows. */
   def collect(backend: Backend): Vector[Row] =
     backend.execute(logicalPlan) match

@@ -82,6 +82,12 @@ object LogicalPlanPrinter:
       val condStr = condition.map(c => s" ON ${exprStr(c)}").getOrElse(" (cross)")
       s"Join ${joinType.toString.toUpperCase}$condStr"
 
+    case UnionAll(_, _) =>
+      "UnionAll"
+
+    case Distinct(_) =>
+      "Distinct"
+
   // ---------------------------------------------------------------------------
   // Expression display helpers
   // ---------------------------------------------------------------------------

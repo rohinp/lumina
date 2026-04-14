@@ -91,3 +91,23 @@ final case class Join(
 ) extends LogicalPlan:
   override val children: Seq[LogicalPlan]  = Seq(left, right)
   override val outputSchema: Option[Schema] = None
+
+/**
+ * Concatenates all rows from both children without removing duplicates.
+ *
+ * Both children must produce the same column names.  Use [[Distinct]] on top
+ * to obtain a UNION (distinct) rather than UNION ALL.
+ */
+final case class UnionAll(left: LogicalPlan, right: LogicalPlan) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(left, right)
+  override val outputSchema: Option[Schema] = left.outputSchema
+
+/**
+ * Removes duplicate rows from the child plan.
+ *
+ * Two rows are considered duplicates when every column value is equal
+ * (using standard Scala equality, i.e. `==`).
+ */
+final case class Distinct(child: LogicalPlan) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = child.outputSchema
