@@ -104,6 +104,22 @@ object PlanToSql:
     case Negate(e)                => s"-(${exprSql(e)})"
     case Alias(e, name)           => s"""${exprSql(e)} AS "$name""""
 
+    // String functions
+    case Upper(e)                 => s"UPPER(${exprSql(e)})"
+    case Lower(e)                 => s"LOWER(${exprSql(e)})"
+    case Trim(e)                  => s"TRIM(${exprSql(e)})"
+    case Length(e)                => s"LENGTH(${exprSql(e)})"
+    case Concat(exprs)            => s"CONCAT(${exprs.map(exprSql).mkString(", ")})"
+    case Substring(e, start, len) => s"SUBSTRING(${exprSql(e)}, $start, $len)"
+    case Like(e, pattern)         => s"${exprSql(e)} LIKE '${pattern.replace("'", "''")}'"
+
+    // Null handling
+    case Coalesce(exprs)          => s"COALESCE(${exprs.map(exprSql).mkString(", ")})"
+
+    // Set membership — empty IN list is always false; non-empty emits SQL IN (...)
+    case In(_, values) if values.isEmpty => "FALSE"
+    case In(e, values)                   => s"${exprSql(e)} IN (${values.map(exprSql).mkString(", ")})"
+
   // ---------------------------------------------------------------------------
   // Aggregation → SQL fragment
   // ---------------------------------------------------------------------------

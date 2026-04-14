@@ -106,3 +106,12 @@ object PredicatePushdown extends Rule:
     case Divide(l, r)            => referencedColumns(l) ++ referencedColumns(r)
     case Negate(e)               => referencedColumns(e)
     case Alias(e, _)             => referencedColumns(e)
+    case Upper(e)                => referencedColumns(e)
+    case Lower(e)                => referencedColumns(e)
+    case Trim(e)                 => referencedColumns(e)
+    case Length(e)               => referencedColumns(e)
+    case Concat(exprs)           => exprs.flatMap(referencedColumns).toSet
+    case Substring(e, _, _)      => referencedColumns(e)
+    case Like(e, _)              => referencedColumns(e)
+    case Coalesce(exprs)         => exprs.flatMap(referencedColumns).toSet
+    case In(e, values)           => referencedColumns(e) ++ values.flatMap(referencedColumns).toSet

@@ -33,6 +33,42 @@ object Expression:
   // Named derived column — wraps any expression and gives it an output name
   final case class Alias(expr: Expression, name: String) extends Expression
 
+  // String functions
+  /** Converts a string value to upper-case. */
+  final case class Upper(expr: Expression) extends Expression
+  /** Converts a string value to lower-case. */
+  final case class Lower(expr: Expression) extends Expression
+  /** Removes leading and trailing whitespace. */
+  final case class Trim(expr: Expression) extends Expression
+  /** Returns the number of characters in a string. */
+  final case class Length(expr: Expression) extends Expression
+  /** Concatenates two or more string expressions. */
+  final case class Concat(exprs: Vector[Expression]) extends Expression
+  /**
+   * Extracts a substring.  `start` is 1-based (SQL convention); `len` is the
+   * maximum number of characters to return.
+   */
+  final case class Substring(expr: Expression, start: Int, len: Int) extends Expression
+  /**
+   * SQL LIKE pattern match.  `%` matches any sequence of characters; `_`
+   * matches exactly one character.  Case-sensitive on both backends.
+   */
+  final case class Like(expr: Expression, pattern: String) extends Expression
+
+  // Null handling
+  /**
+   * Returns the first non-null value from the supplied expressions, or null if
+   * all are null.  Mirrors SQL `COALESCE(e1, e2, ...)`.
+   */
+  final case class Coalesce(exprs: Vector[Expression]) extends Expression
+
+  // Set membership
+  /**
+   * Returns true when `expr` equals any value in `values`.
+   * Mirrors SQL `col IN (v1, v2, ...)`.
+   */
+  final case class In(expr: Expression, values: Vector[Expression]) extends Expression
+
 sealed trait Aggregation
 
 object Aggregation:

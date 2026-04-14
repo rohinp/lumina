@@ -113,6 +113,15 @@ object LogicalPlanPrinter:
     case Divide(l, r)                 => s"(${exprStr(l)} / ${exprStr(r)})"
     case Negate(e)                    => s"-(${exprStr(e)})"
     case Alias(e, name)               => s"${exprStr(e)} AS $name"
+    case Upper(e)                     => s"UPPER(${exprStr(e)})"
+    case Lower(e)                     => s"LOWER(${exprStr(e)})"
+    case Trim(e)                      => s"TRIM(${exprStr(e)})"
+    case Length(e)                    => s"LENGTH(${exprStr(e)})"
+    case Concat(exprs)                => s"CONCAT(${exprs.map(exprStr).mkString(", ")})"
+    case Substring(e, s, l)           => s"SUBSTRING(${exprStr(e)}, $s, $l)"
+    case Like(e, pattern)             => s"${exprStr(e)} LIKE '$pattern'"
+    case Coalesce(exprs)              => s"COALESCE(${exprs.map(exprStr).mkString(", ")})"
+    case In(e, values)                => s"${exprStr(e)} IN (${values.map(exprStr).mkString(", ")})"
 
   // ---------------------------------------------------------------------------
   // Aggregation display helpers

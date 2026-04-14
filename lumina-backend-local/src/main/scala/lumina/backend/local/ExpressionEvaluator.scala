@@ -43,6 +43,53 @@ object ExpressionEvaluator:
       case Negate(e)                => -toDouble(evaluate(e, row))
       case Alias(e, _)              => evaluate(e, row)   // unwrap; name is used by Project
 
+      // String functions
+      case Upper(e)                 =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString.toUpperCase
+      case Lower(e)                 =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString.toLowerCase
+      case Trim(e)                  =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString.trim
+      case Length(e)                =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString.length
+      case Concat(exprs)            =>
+        val parts = exprs.map(evaluate(_, row))
+        if parts.contains(null) then null
+        else parts.map(_.toString).mkString
+      case Substring(e, start, len) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          val s = v.toString
+          // 1-based start index (SQL convention)
+          val from  = (start - 1).max(0)
+          val until = (from + len).min(s.length)
+          if from >= s.length then "" else s.substring(from, until)
+      case Like(e, pattern)         =>
+        val v = evaluate(e, row)
+        if v == null then false
+        else
+          // Translate SQL LIKE pattern to a Java regex
+          val regex = "\\Q" + pattern
+            .replace("\\E", "\\E\\\\E\\Q")
+            .replace("%", "\\E.*\\Q")
+            .replace("_", "\\E.\\Q") + "\\E"
+          v.toString.matches(regex)
+
+      // Null handling
+      case Coalesce(exprs)          =>
+        exprs.map(evaluate(_, row)).find(_ != null).orNull
+
+      // Set membership
+      case In(e, values)            =>
+        val target = evaluate(e, row)
+        if target == null then false
+        else values.map(evaluate(_, row)).exists(equalValues(target, _))
+
   /** Evaluate a predicate expression; throws if the result is not a Boolean. */
   def evaluatePredicate(expr: Expression, row: Row): Boolean =
     evaluate(expr, row) match
@@ -62,7 +109,7 @@ object ExpressionEvaluator:
       case (sa: String, sb: String) => sa.compareTo(sb)
       case _                        => toDouble(a).compareTo(toDouble(b))
 
-  private def equalValues(a: Any, b: Any): Boolean =
+  def equalValues(a: Any, b: Any): Boolean =
     if a == null && b == null then true
     else if a == null || b == null then false
     else (a, b) match
