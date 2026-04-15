@@ -83,6 +83,69 @@ object ExpressionEvaluator:
             .replace("_", "\\E.\\Q") + "\\E"
           v.toString.matches(regex)
 
+      // Extended string functions
+      case Replace(e, search, replacement) =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString.replace(search, replacement)
+
+      case RegexpExtract(e, pattern, group) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          val m = java.util.regex.Pattern.compile(pattern).matcher(v.toString)
+          if m.find() then m.group(group) else null
+
+      case RegexpReplace(e, pattern, replacement) =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString.replaceAll(pattern, replacement)
+
+      case StartsWith(e, prefix) =>
+        val v = evaluate(e, row)
+        if v == null then false else v.toString.startsWith(prefix)
+
+      case EndsWith(e, suffix) =>
+        val v = evaluate(e, row)
+        if v == null then false else v.toString.endsWith(suffix)
+
+      case LPad(e, length, pad) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          val s = v.toString
+          if s.length >= length then s
+          else
+            val needed = length - s.length
+            val filling = (pad * ((needed / pad.length) + 1)).take(needed)
+            filling + s
+
+      case RPad(e, length, pad) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          val s = v.toString
+          if s.length >= length then s
+          else
+            val needed = length - s.length
+            val filling = (pad * ((needed / pad.length) + 1)).take(needed)
+            s + filling
+
+      case Repeat(e, n) =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString * n
+
+      case Reverse(e) =>
+        val v = evaluate(e, row)
+        if v == null then null else v.toString.reverse
+
+      case InitCap(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          v.toString.split("(?<=\\s)|(?=\\s)").map { word =>
+            if word.isBlank then word
+            else word.head.toUpper.toString + word.tail.toLowerCase
+          }.mkString
+
       // Null handling
       case Coalesce(exprs)          =>
         exprs.map(evaluate(_, row)).find(_ != null).orNull

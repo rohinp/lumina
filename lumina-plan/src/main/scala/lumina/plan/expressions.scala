@@ -55,6 +55,44 @@ object Expression:
    */
   final case class Like(expr: Expression, pattern: String) extends Expression
 
+  // Extended string functions
+  /** Replaces every occurrence of `search` with `replacement` in a string. */
+  final case class Replace(expr: Expression, search: String, replacement: String) extends Expression
+  /**
+   * Extracts the text of the `group`-th capturing group (1-based) from the
+   * first match of `pattern` in the string.  Returns null when there is no
+   * match or the value is null.
+   */
+  final case class RegexpExtract(expr: Expression, pattern: String, group: Int = 1) extends Expression
+  /**
+   * Replaces all sub-strings that match `pattern` with `replacement`.
+   * The replacement string may reference captured groups via `$1`, `$2`, etc.
+   */
+  final case class RegexpReplace(expr: Expression, pattern: String, replacement: String) extends Expression
+  /** Returns true when the string starts with `prefix`. */
+  final case class StartsWith(expr: Expression, prefix: String) extends Expression
+  /** Returns true when the string ends with `suffix`. */
+  final case class EndsWith(expr: Expression, suffix: String) extends Expression
+  /**
+   * Left-pads the string to `length` characters using `pad`.
+   * If the string is already at least `length` characters it is returned
+   * unchanged.  `pad` defaults to a single space.
+   */
+  final case class LPad(expr: Expression, length: Int, pad: String = " ") extends Expression
+  /**
+   * Right-pads the string to `length` characters using `pad`.
+   */
+  final case class RPad(expr: Expression, length: Int, pad: String = " ") extends Expression
+  /** Returns the string repeated `n` times. */
+  final case class Repeat(expr: Expression, n: Int) extends Expression
+  /** Returns the characters of the string in reverse order. */
+  final case class Reverse(expr: Expression) extends Expression
+  /**
+   * Converts the first letter of each word to upper-case and the rest to
+   * lower-case.  Mirrors SQL `INITCAP`.
+   */
+  final case class InitCap(expr: Expression) extends Expression
+
   // Null handling
   /**
    * Returns the first non-null value from the supplied expressions, or null if

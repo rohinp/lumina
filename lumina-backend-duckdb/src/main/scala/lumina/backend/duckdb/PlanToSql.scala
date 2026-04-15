@@ -134,6 +134,33 @@ object PlanToSql:
     case Concat(exprs)            => s"CONCAT(${exprs.map(exprSql).mkString(", ")})"
     case Substring(e, start, len) => s"SUBSTRING(${exprSql(e)}, $start, $len)"
     case Like(e, pattern)         => s"${exprSql(e)} LIKE '${pattern.replace("'", "''")}'"
+    case Replace(e, s, r)        => s"REPLACE(${exprSql(e)}, '${s.replace("'", "''")}', '${r.replace("'", "''")}')"
+    case RegexpExtract(e, p, g)  =>
+      // DuckDB regexp_extract(string, pattern, group_index) — group 0 = full match
+      s"regexp_extract(${exprSql(e)}, '${p.replace("'", "''")}', $g)"
+    case RegexpReplace(e, p, r)  =>
+      // DuckDB regexp_replace without flags replaces only the first match; 'g' replaces all
+      s"regexp_replace(${exprSql(e)}, '${p.replace("'", "''")}', '${r.replace("'", "''")}', 'g')"
+    case StartsWith(e, prefix)   =>
+      // DuckDB starts_with returns NULL for NULL input; COALESCE to match LocalBackend (returns false)
+      s"COALESCE(starts_with(${exprSql(e)}, '${prefix.replace("'", "''")}'), false)"
+    case EndsWith(e, suffix)     =>
+      // DuckDB ends_with returns NULL for NULL input; COALESCE to match LocalBackend (returns false)
+      s"COALESCE(ends_with(${exprSql(e)}, '${suffix.replace("'", "''")}'), false)"
+    case LPad(e, l, p)           =>
+      // DuckDB lpad truncates when string is longer than length; guard with CASE WHEN
+      val col = exprSql(e)
+      s"CASE WHEN length($col) >= $l THEN $col ELSE lpad($col, $l, '${p.replace("'", "''")}') END"
+    case RPad(e, l, p)           =>
+      // DuckDB rpad truncates when string is longer than length; guard with CASE WHEN
+      val col = exprSql(e)
+      s"CASE WHEN length($col) >= $l THEN $col ELSE rpad($col, $l, '${p.replace("'", "''")}') END"
+    case Repeat(e, n)            => s"repeat(${exprSql(e)}, $n)"
+    case Reverse(e)              => s"reverse(${exprSql(e)})"
+    case InitCap(e)              =>
+      // DuckDB 1.2.0 lacks initcap; implement via string_split + list_transform
+      val col = exprSql(e)
+      s"array_to_string(list_transform(string_split(lower($col), ' '), x -> CASE WHEN x = '' THEN '' ELSE upper(left(x, 1)) || substring(x, 2) END), ' ')"
 
     // Null handling
     case Coalesce(exprs)          => s"COALESCE(${exprs.map(exprSql).mkString(", ")})"

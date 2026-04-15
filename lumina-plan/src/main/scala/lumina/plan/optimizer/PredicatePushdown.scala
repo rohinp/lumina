@@ -162,6 +162,16 @@ object PredicatePushdown extends Rule:
     case Concat(exprs)           => exprs.flatMap(referencedColumns).toSet
     case Substring(e, _, _)      => referencedColumns(e)
     case Like(e, _)              => referencedColumns(e)
+    case Replace(e, _, _)        => referencedColumns(e)
+    case RegexpExtract(e, _, _)  => referencedColumns(e)
+    case RegexpReplace(e, _, _)  => referencedColumns(e)
+    case StartsWith(e, _)        => referencedColumns(e)
+    case EndsWith(e, _)          => referencedColumns(e)
+    case LPad(e, _, _)           => referencedColumns(e)
+    case RPad(e, _, _)           => referencedColumns(e)
+    case Repeat(e, _)            => referencedColumns(e)
+    case Reverse(e)              => referencedColumns(e)
+    case InitCap(e)              => referencedColumns(e)
     case Coalesce(exprs)         => exprs.flatMap(referencedColumns).toSet
     case In(e, values)           => referencedColumns(e) ++ values.flatMap(referencedColumns).toSet
     case CaseWhen(branches, otherwise) =>
