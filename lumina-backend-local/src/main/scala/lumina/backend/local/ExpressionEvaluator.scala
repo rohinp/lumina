@@ -90,6 +90,14 @@ object ExpressionEvaluator:
         if target == null then false
         else values.map(evaluate(_, row)).exists(equalValues(target, _))
 
+      // Conditional
+      case CaseWhen(branches, otherwise) =>
+        branches
+          .find { case (cond, _) => evaluatePredicate(cond, row) }
+          .map  { case (_, value) => evaluate(value, row) }
+          .orElse(otherwise.map(evaluate(_, row)))
+          .orNull
+
   /** Evaluate a predicate expression; throws if the result is not a Boolean. */
   def evaluatePredicate(expr: Expression, row: Row): Boolean =
     evaluate(expr, row) match

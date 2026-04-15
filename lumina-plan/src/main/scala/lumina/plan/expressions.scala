@@ -69,6 +69,27 @@ object Expression:
    */
   final case class In(expr: Expression, values: Vector[Expression]) extends Expression
 
+  // Conditional
+  /**
+   * Evaluates each `(condition, value)` branch in order and returns the value
+   * from the first branch whose condition is true.  Returns `otherwise` if no
+   * branch matches, or null when `otherwise` is absent.
+   *
+   * Mirrors SQL `CASE WHEN c1 THEN v1 WHEN c2 THEN v2 … ELSE default END`.
+   *
+   * {{{
+   *   CaseWhen(
+   *     branches  = Vector(GreaterThan(col("score"), Literal(90)) -> Literal("A"),
+   *                        GreaterThan(col("score"), Literal(70)) -> Literal("B")),
+   *     otherwise = Some(Literal("C"))
+   *   )
+   * }}}
+   */
+  final case class CaseWhen(
+      branches:  Vector[(Expression, Expression)],
+      otherwise: Option[Expression] = None
+  ) extends Expression
+
 sealed trait Aggregation
 
 object Aggregation:

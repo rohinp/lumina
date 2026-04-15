@@ -58,6 +58,9 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
             if seen.contains(row.values) then (acc, seen)
             else (acc :+ row, seen + row.values)
         }._1
+      case Sample(child, fraction, seed)               =>
+        val rng  = seed.map(new scala.util.Random(_)).getOrElse(new scala.util.Random())
+        run(child).filter(_ => rng.nextDouble() < fraction)
       case DropColumns(child, cols)                    =>
         val toDrop = cols.toSet
         run(child).map(row => Row(row.values.filterNot { case (k, _) => toDrop.contains(k) }))

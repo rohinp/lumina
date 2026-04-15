@@ -70,6 +70,12 @@ object PredicatePushdown extends Rule:
           if referencedColumns(condition).intersect(windowExprs.map(_.alias).toSet).isEmpty =>
         Window(Filter(child, condition), windowExprs)
 
+      // A filter above a Sample can always move below it — filtering first
+      // reduces the pool before sampling, which preserves the sampling
+      // semantics (independent Bernoulli trials per row).
+      case Filter(Sample(child, fraction, seed), condition) =>
+        Sample(Filter(child, condition), fraction, seed)
+
       // A filter above a DropColumns can be pushed below it when the filter
       // does not reference any of the dropped columns.
       case Filter(DropColumns(child, cols), condition)
@@ -158,3 +164,6 @@ object PredicatePushdown extends Rule:
     case Like(e, _)              => referencedColumns(e)
     case Coalesce(exprs)         => exprs.flatMap(referencedColumns).toSet
     case In(e, values)           => referencedColumns(e) ++ values.flatMap(referencedColumns).toSet
+    case CaseWhen(branches, otherwise) =>
+      branches.flatMap { case (c, v) => referencedColumns(c) ++ referencedColumns(v) }.toSet ++
+      otherwise.map(referencedColumns).getOrElse(Set.empty)

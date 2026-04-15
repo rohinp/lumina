@@ -55,6 +55,7 @@ object Optimizer:
       case (Join(_, _, cond, jt), Seq(l, r)) => Join(l, r, cond, jt)
       case (UnionAll(_, _),          Seq(l, r)) => UnionAll(l, r)
       case (Distinct(_),             Seq(c))    => Distinct(c)
+      case (Sample(_, frac, seed),   Seq(c))    => Sample(c, frac, seed)
       case (DropColumns(_, cols),    Seq(c))    => DropColumns(c, cols)
       case (RenameColumn(_, f, t),   Seq(c))    => RenameColumn(c, f, t)
       case _                                     => plan   // unknown shape, leave intact

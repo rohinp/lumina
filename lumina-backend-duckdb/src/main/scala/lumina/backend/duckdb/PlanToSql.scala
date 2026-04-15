@@ -78,6 +78,13 @@ object PlanToSql:
     case Distinct(child) =>
       s"SELECT DISTINCT * FROM (${render(child)}) AS _distinct"
 
+    case Sample(child, fraction, _) =>
+      // DuckDB Bernoulli sampling — seed is honored by LocalBackend but not
+      // propagated to DuckDB (the JDBC driver version in use does not support
+      // the REPEATABLE clause for percentage-based sampling).
+      val pct = fraction * 100
+      s"SELECT * FROM (${render(child)}) AS _sampled USING SAMPLE $pct PERCENT (bernoulli)"
+
     case DropColumns(child, cols) =>
       val excludeList = cols.map(c => s""""$c"""").mkString(", ")
       s"SELECT * EXCLUDE ($excludeList) FROM (${render(child)}) AS _drop"
@@ -127,6 +134,12 @@ object PlanToSql:
     // Set membership — empty IN list is always false; non-empty emits SQL IN (...)
     case In(_, values) if values.isEmpty => "FALSE"
     case In(e, values)                   => s"${exprSql(e)} IN (${values.map(exprSql).mkString(", ")})"
+
+    // Conditional
+    case CaseWhen(branches, otherwise) =>
+      val branchSql = branches.map { case (c, v) => s"WHEN ${exprSql(c)} THEN ${exprSql(v)}" }.mkString(" ")
+      val elseSql   = otherwise.map(e => s" ELSE ${exprSql(e)}").getOrElse("")
+      s"CASE $branchSql$elseSql END"
 
   // ---------------------------------------------------------------------------
   // Aggregation → SQL fragment

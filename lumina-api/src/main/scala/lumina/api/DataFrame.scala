@@ -96,6 +96,55 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
     DataFrame(Distinct(logicalPlan))
 
   /**
+   * Returns a randomly sampled subset of rows.
+   *
+   * `fraction` must be in [0.0, 1.0].  Each row is included independently with
+   * probability `fraction` (Bernoulli sampling).  Provide `seed` for
+   * reproducible results.
+   */
+  def sample(fraction: Double, seed: Option[Long] = None): DataFrame =
+    DataFrame(Sample(logicalPlan, fraction, seed))
+
+  // ---------------------------------------------------------------------------
+  // Execution shortcuts
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Executes the plan and returns the total number of rows.
+   *
+   * Pushes a COUNT(*) aggregate down to the backend rather than materialising
+   * all rows in the JVM.
+   */
+  def count(backend: Backend): Long =
+    val countPlan = Aggregate(logicalPlan, Vector.empty, Vector(Aggregation.Count(None, Some("_count"))), None)
+    backend.execute(countPlan) match
+      case BackendResult.InMemory(rows) =>
+        rows.headOption.map(_.values("_count") match
+          case n: Long => n
+          case n: Int  => n.toLong
+          case n: java.lang.Long    => n.longValue()
+          case n: java.lang.Integer => n.longValue()
+          case other => other.toString.toLong
+        ).getOrElse(0L)
+
+  /**
+   * Executes the plan and returns at most the first `n` rows.
+   *
+   * Equivalent to `limit(n).collect(backend)` but named to match Spark / Pandas
+   * conventions.
+   */
+  def head(n: Int, backend: Backend): Vector[Row] =
+    limit(n).collect(backend)
+
+  /** Returns true when the plan produces no rows. */
+  def isEmpty(backend: Backend): Boolean =
+    head(1, backend).isEmpty
+
+  /** Returns true when the plan produces at least one row. */
+  def nonEmpty(backend: Backend): Boolean =
+    !isEmpty(backend)
+
+  /**
    * Drops one or more columns by name.  Columns that do not exist are silently
    * ignored, matching Spark's behaviour.
    */

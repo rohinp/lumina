@@ -113,6 +113,23 @@ final case class Distinct(child: LogicalPlan) extends LogicalPlan:
   override val outputSchema: Option[Schema] = child.outputSchema
 
 /**
+ * Returns a randomly sampled subset of rows from the child plan.
+ *
+ * `fraction` must be in [0.0, 1.0].  Each row is included independently with
+ * probability `fraction` (Bernoulli sampling), so the exact output size varies.
+ * Supply a `seed` for deterministic results; omit it for non-deterministic
+ * sampling.
+ */
+final case class Sample(
+    child:    LogicalPlan,
+    fraction: Double,
+    seed:     Option[Long] = None
+) extends LogicalPlan:
+  require(fraction >= 0.0 && fraction <= 1.0, s"Sample fraction must be in [0,1], got $fraction")
+  override val children: Seq[LogicalPlan]  = Seq(child)
+  override val outputSchema: Option[Schema] = child.outputSchema
+
+/**
  * Removes one or more named columns from each output row.
  *
  * Columns that do not exist in a row are silently ignored — this matches the
