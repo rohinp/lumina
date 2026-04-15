@@ -81,6 +81,20 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
     DataFrame(Window(logicalPlan, windowExprs.asScala.toVector))
 
   /**
+   * Returns rows that appear in both this DataFrame and `other`, with
+   * duplicates removed.  Both DataFrames must have the same column names.
+   */
+  def intersect(other: DataFrame): DataFrame =
+    DataFrame(Intersect(logicalPlan, other.logicalPlan))
+
+  /**
+   * Returns rows from this DataFrame that do not appear in `other`, with
+   * duplicates removed.  Both DataFrames must have the same column names.
+   */
+  def except(other: DataFrame): DataFrame =
+    DataFrame(Except(logicalPlan, other.logicalPlan))
+
+  /**
    * Concatenates all rows from this DataFrame and `other` without removing
    * duplicates.  Both DataFrames must have the same column names.
    */

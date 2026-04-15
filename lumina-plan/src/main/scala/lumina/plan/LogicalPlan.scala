@@ -130,6 +130,25 @@ final case class Sample(
   override val outputSchema: Option[Schema] = child.outputSchema
 
 /**
+ * Returns rows that appear in both `left` and `right`, with duplicates removed.
+ *
+ * Two rows are considered equal when every column value is equal.
+ * Mirrors SQL `INTERSECT` (distinct).
+ */
+final case class Intersect(left: LogicalPlan, right: LogicalPlan) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(left, right)
+  override val outputSchema: Option[Schema] = left.outputSchema
+
+/**
+ * Returns rows from `left` that do not appear in `right`, with duplicates removed.
+ *
+ * Mirrors SQL `EXCEPT` (distinct).
+ */
+final case class Except(left: LogicalPlan, right: LogicalPlan) extends LogicalPlan:
+  override val children: Seq[LogicalPlan]  = Seq(left, right)
+  override val outputSchema: Option[Schema] = left.outputSchema
+
+/**
  * Removes one or more named columns from each output row.
  *
  * Columns that do not exist in a row are silently ignored — this matches the

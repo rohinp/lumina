@@ -3,6 +3,7 @@ package lumina.backend.duckdb
 import lumina.plan.*
 import lumina.plan.Expression.*
 import lumina.plan.Aggregation.*
+import lumina.plan.WindowExpr.*
 
 /**
  * Translates a [[LogicalPlan]] into a DuckDB-compatible SQL string.
@@ -78,6 +79,12 @@ object PlanToSql:
     case Distinct(child) =>
       s"SELECT DISTINCT * FROM (${render(child)}) AS _distinct"
 
+    case Intersect(left, right) =>
+      s"SELECT * FROM ((${render(left)}) INTERSECT (${render(right)})) AS _intersect"
+
+    case Except(left, right) =>
+      s"SELECT * FROM ((${render(left)}) EXCEPT (${render(right)})) AS _except"
+
     case Sample(child, fraction, _) =>
       // DuckDB Bernoulli sampling — seed is honored by LocalBackend but not
       // propagated to DuckDB (the JDBC driver version in use does not support
@@ -130,6 +137,15 @@ object PlanToSql:
 
     // Null handling
     case Coalesce(exprs)          => s"COALESCE(${exprs.map(exprSql).mkString(", ")})"
+
+    // Type casting
+    case Cast(e, t) => s"CAST(${exprSql(e)} AS ${sqlType(t)})"
+
+    // Numeric functions
+    case Abs(e)         => s"ABS(${exprSql(e)})"
+    case Round(e, s)    => s"ROUND(${exprSql(e)}, $s)"
+    case Floor(e)       => s"FLOOR(${exprSql(e)})"
+    case Ceil(e)        => s"CEIL(${exprSql(e)})"
 
     // Set membership — empty IN list is always false; non-empty emits SQL IN (...)
     case In(_, values) if values.isEmpty => "FALSE"
@@ -220,6 +236,14 @@ object PlanToSql:
 
   private def aliasSql(alias: Option[String]): String =
     alias.map(a => s""" AS "$a"""").getOrElse("")
+
+  private def sqlType(dt: DataType): String = dt match
+    case DataType.Int32       => "INTEGER"
+    case DataType.Int64       => "BIGINT"
+    case DataType.Float64     => "DOUBLE"
+    case DataType.BooleanType => "BOOLEAN"
+    case DataType.StringType  => "VARCHAR"
+    case DataType.Unknown     => "VARCHAR"
 
   // ---------------------------------------------------------------------------
   // Helpers

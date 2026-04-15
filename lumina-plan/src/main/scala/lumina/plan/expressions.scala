@@ -69,6 +69,25 @@ object Expression:
    */
   final case class In(expr: Expression, values: Vector[Expression]) extends Expression
 
+  // Type casting
+  /**
+   * Explicitly converts `expr` to the given [[DataType]].
+   *
+   * In [[LocalBackend]] the cast is performed in Scala; in [[DuckDBBackend]]
+   * it maps to `CAST(expr AS sqlType)`.
+   */
+  final case class Cast(expr: Expression, targetType: DataType) extends Expression
+
+  // Numeric functions
+  /** Returns the absolute value of a numeric expression. */
+  final case class Abs(expr: Expression) extends Expression
+  /** Rounds a numeric expression to `scale` decimal places. */
+  final case class Round(expr: Expression, scale: Int = 0) extends Expression
+  /** Returns the largest integer not greater than the expression value. */
+  final case class Floor(expr: Expression) extends Expression
+  /** Returns the smallest integer not less than the expression value. */
+  final case class Ceil(expr: Expression) extends Expression
+
   // Conditional
   /**
    * Evaluates each `(condition, value)` branch in order and returns the value

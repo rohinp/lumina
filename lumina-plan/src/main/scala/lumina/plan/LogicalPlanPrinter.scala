@@ -88,6 +88,12 @@ object LogicalPlanPrinter:
     case Distinct(_) =>
       "Distinct"
 
+    case Intersect(_, _) =>
+      "Intersect"
+
+    case Except(_, _) =>
+      "Except"
+
     case Sample(_, fraction, seed) =>
       val seedStr = seed.map(s => s" seed=$s").getOrElse("")
       s"Sample [fraction=$fraction$seedStr]"
@@ -132,6 +138,11 @@ object LogicalPlanPrinter:
     case Like(e, pattern)             => s"${exprStr(e)} LIKE '$pattern'"
     case Coalesce(exprs)              => s"COALESCE(${exprs.map(exprStr).mkString(", ")})"
     case In(e, values)                => s"${exprStr(e)} IN (${values.map(exprStr).mkString(", ")})"
+    case Cast(e, t)                   => s"CAST(${exprStr(e)} AS $t)"
+    case Abs(e)                       => s"ABS(${exprStr(e)})"
+    case Round(e, scale)              => s"ROUND(${exprStr(e)}, $scale)"
+    case Floor(e)                     => s"FLOOR(${exprStr(e)})"
+    case Ceil(e)                      => s"CEIL(${exprStr(e)})"
     case CaseWhen(branches, otherwise) =>
       val branchStr   = branches.map { case (c, v) => s"WHEN ${exprStr(c)} THEN ${exprStr(v)}" }.mkString(" ")
       val elseStr     = otherwise.map(e => s" ELSE ${exprStr(e)}").getOrElse("")

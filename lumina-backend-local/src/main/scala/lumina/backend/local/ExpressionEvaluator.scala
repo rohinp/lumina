@@ -90,6 +90,39 @@ object ExpressionEvaluator:
         if target == null then false
         else values.map(evaluate(_, row)).exists(equalValues(target, _))
 
+      // Type casting
+      case Cast(e, targetType)          =>
+        import lumina.plan.DataType.*
+        val v = evaluate(e, row)
+        if v == null then null
+        else targetType match
+          case Int32       => toDouble(v).toInt
+          case Int64       => toDouble(v).toLong
+          case Float64     => toDouble(v)
+          case BooleanType => v match
+            case b: Boolean => b
+            case s: String  => s.toBoolean
+            case n          => toDouble(n) != 0.0
+          case StringType  => v.toString
+          case Unknown     => v
+
+      // Numeric functions
+      case Abs(e)                       =>
+        val v = evaluate(e, row)
+        if v == null then null else math.abs(toDouble(v))
+      case Round(e, scale)              =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          val factor = math.pow(10, scale)
+          math.round(toDouble(v) * factor).toDouble / factor
+      case Floor(e)                     =>
+        val v = evaluate(e, row)
+        if v == null then null else math.floor(toDouble(v))
+      case Ceil(e)                      =>
+        val v = evaluate(e, row)
+        if v == null then null else math.ceil(toDouble(v))
+
       // Conditional
       case CaseWhen(branches, otherwise) =>
         branches

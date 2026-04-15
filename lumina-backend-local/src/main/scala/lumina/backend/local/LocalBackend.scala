@@ -58,6 +58,24 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
             if seen.contains(row.values) then (acc, seen)
             else (acc :+ row, seen + row.values)
         }._1
+      case Intersect(left, right)                      =>
+        val rightSet = run(right).map(_.values).toSet
+        run(left)
+          .filter(r => rightSet.contains(r.values))
+          .foldLeft((Vector.empty[Row], Set.empty[Map[String, Any]])) {
+            case ((acc, seen), row) =>
+              if seen.contains(row.values) then (acc, seen)
+              else (acc :+ row, seen + row.values)
+          }._1
+      case Except(left, right)                         =>
+        val rightSet = run(right).map(_.values).toSet
+        run(left)
+          .filterNot(r => rightSet.contains(r.values))
+          .foldLeft((Vector.empty[Row], Set.empty[Map[String, Any]])) {
+            case ((acc, seen), row) =>
+              if seen.contains(row.values) then (acc, seen)
+              else (acc :+ row, seen + row.values)
+          }._1
       case Sample(child, fraction, seed)               =>
         val rng  = seed.map(new scala.util.Random(_)).getOrElse(new scala.util.Random())
         run(child).filter(_ => rng.nextDouble() < fraction)
