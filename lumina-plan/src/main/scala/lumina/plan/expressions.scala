@@ -88,6 +88,57 @@ object Expression:
   /** Returns the smallest integer not less than the expression value. */
   final case class Ceil(expr: Expression) extends Expression
 
+  // Date/time component extraction
+  /** Extracts the 4-digit year from a date or timestamp value. */
+  final case class Year(expr: Expression) extends Expression
+  /** Extracts the month number (1–12) from a date or timestamp value. */
+  final case class Month(expr: Expression) extends Expression
+  /** Extracts the day of the month (1–31) from a date or timestamp value. */
+  final case class Day(expr: Expression) extends Expression
+  /** Extracts the hour (0–23) from a timestamp value. */
+  final case class Hour(expr: Expression) extends Expression
+  /** Extracts the minute (0–59) from a timestamp value. */
+  final case class Minute(expr: Expression) extends Expression
+  /** Extracts the second (0–59) from a timestamp value. */
+  final case class Second(expr: Expression) extends Expression
+  /**
+   * Returns the ISO day-of-week: 1 = Monday, 7 = Sunday.
+   * Matches Java's `DayOfWeek.getValue()` and SQL `ISODOW`.
+   */
+  final case class DayOfWeek(expr: Expression) extends Expression
+
+  // Date arithmetic
+  /**
+   * Adds `days` days to a date or timestamp value.
+   * `days` may be any numeric expression.
+   */
+  final case class DateAdd(date: Expression, days: Expression) extends Expression
+  /**
+   * Returns the number of whole days between `start` and `end` (end − start).
+   * A positive result means `end` is after `start`.
+   */
+  final case class DateDiff(end: Expression, start: Expression) extends Expression
+
+  // Date parsing and formatting
+  /**
+   * Parses a string in ISO-8601 date format ("yyyy-MM-dd") to a
+   * `java.time.LocalDate` value.  Equivalent to SQL `CAST(expr AS DATE)`.
+   */
+  final case class ToDate(expr: Expression) extends Expression
+  /**
+   * Parses a string in ISO-8601 datetime format ("yyyy-MM-dd HH:mm:ss" or
+   * "yyyy-MM-ddTHH:mm:ss") to a `java.time.LocalDateTime` value.
+   * Equivalent to SQL `CAST(expr AS TIMESTAMP)`.
+   */
+  final case class ToTimestamp(expr: Expression) extends Expression
+  /**
+   * Formats a date or timestamp value as a string using a Java
+   * `DateTimeFormatter` pattern (e.g., `"yyyy-MM-dd"`, `"dd/MM/yyyy"`).
+   * In [[DuckDBBackend]] the pattern is converted to the equivalent
+   * `STRFTIME` format string automatically.
+   */
+  final case class DateFormat(expr: Expression, format: String) extends Expression
+
   // Conditional
   /**
    * Evaluates each `(condition, value)` branch in order and returns the value

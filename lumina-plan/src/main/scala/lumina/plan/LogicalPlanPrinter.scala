@@ -148,6 +148,20 @@ object LogicalPlanPrinter:
       val elseStr     = otherwise.map(e => s" ELSE ${exprStr(e)}").getOrElse("")
       s"CASE $branchStr$elseStr END"
 
+    // Date/time expressions
+    case Year(e)                 => s"YEAR(${exprStr(e)})"
+    case Month(e)                => s"MONTH(${exprStr(e)})"
+    case Day(e)                  => s"DAY(${exprStr(e)})"
+    case Hour(e)                 => s"HOUR(${exprStr(e)})"
+    case Minute(e)               => s"MINUTE(${exprStr(e)})"
+    case Second(e)               => s"SECOND(${exprStr(e)})"
+    case DayOfWeek(e)            => s"DAYOFWEEK(${exprStr(e)})"
+    case DateAdd(d, n)           => s"DATEADD(${exprStr(d)}, ${exprStr(n)})"
+    case DateDiff(e, s)          => s"DATEDIFF(${exprStr(e)}, ${exprStr(s)})"
+    case ToDate(e)               => s"TO_DATE(${exprStr(e)})"
+    case ToTimestamp(e)          => s"TO_TIMESTAMP(${exprStr(e)})"
+    case DateFormat(e, fmt)      => s"DATE_FORMAT(${exprStr(e)}, '$fmt')"
+
   // ---------------------------------------------------------------------------
   // Aggregation display helpers
   // ---------------------------------------------------------------------------

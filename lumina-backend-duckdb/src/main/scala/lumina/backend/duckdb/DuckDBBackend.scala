@@ -80,12 +80,14 @@ final class DuckDBBackend(registry: DataRegistry) extends Backend:
     pstmt.close()
 
   private def sqlTypeFor(value: Any): String = value match
-    case _: Int     => "INTEGER"
-    case _: Long    => "BIGINT"
-    case _: Double  => "DOUBLE"
-    case _: Float   => "FLOAT"
-    case _: Boolean => "BOOLEAN"
-    case _          => "VARCHAR"
+    case _: Int                    => "INTEGER"
+    case _: Long                   => "BIGINT"
+    case _: Double                 => "DOUBLE"
+    case _: Float                  => "FLOAT"
+    case _: Boolean                => "BOOLEAN"
+    case _: java.time.LocalDate     => "DATE"
+    case _: java.time.LocalDateTime => "TIMESTAMP"
+    case _                         => "VARCHAR"
 
   // ---------------------------------------------------------------------------
   // ResultSet → Row conversion

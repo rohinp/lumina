@@ -3,6 +3,9 @@ package lumina.backend.local
 import lumina.plan.Expression
 import lumina.plan.Expression.*
 import lumina.plan.backend.Row
+import java.time.{LocalDate, LocalDateTime}
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 /**
  * Evaluates logical-plan expressions against a single Row at runtime.
@@ -104,7 +107,135 @@ object ExpressionEvaluator:
             case s: String  => s.toBoolean
             case n          => toDouble(n) != 0.0
           case StringType  => v.toString
+          case DateType    => v match
+            case d: LocalDate     => d
+            case d: LocalDateTime => d.toLocalDate
+            case s                => LocalDate.parse(s.toString)
+          case TimestampType => v match
+            case d: LocalDateTime => d
+            case d: LocalDate     => d.atStartOfDay()
+            case s                =>
+              val str = s.toString
+              scala.util.Try(LocalDateTime.parse(str))
+                .orElse(scala.util.Try(LocalDateTime.parse(str,
+                  DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))))
+                .orElse(scala.util.Try(LocalDate.parse(str).atStartOfDay()))
+                .getOrElse(throw IllegalArgumentException(s"Cannot parse timestamp: $s"))
           case Unknown     => v
+
+      // Date/time expressions
+      case ToDate(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDate     => d
+          case d: LocalDateTime => d.toLocalDate
+          case s                => LocalDate.parse(s.toString)
+
+      case ToTimestamp(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDateTime => d
+          case d: LocalDate     => d.atStartOfDay()
+          case s                =>
+            val str = s.toString
+            scala.util.Try(LocalDateTime.parse(str))
+              .orElse(scala.util.Try(LocalDateTime.parse(str,
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))))
+              .orElse(scala.util.Try(LocalDate.parse(str).atStartOfDay()))
+              .getOrElse(throw IllegalArgumentException(s"Cannot parse timestamp: $s"))
+
+      case Year(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDate     => d.getYear
+          case d: LocalDateTime => d.getYear
+          case other            => throw IllegalArgumentException(s"Year requires a date, got: $other")
+
+      case Month(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDate     => d.getMonthValue
+          case d: LocalDateTime => d.getMonthValue
+          case other            => throw IllegalArgumentException(s"Month requires a date, got: $other")
+
+      case Day(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDate     => d.getDayOfMonth
+          case d: LocalDateTime => d.getDayOfMonth
+          case other            => throw IllegalArgumentException(s"Day requires a date, got: $other")
+
+      case Hour(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDateTime => d.getHour
+          case d: LocalDate     => 0   // midnight
+          case other            => throw IllegalArgumentException(s"Hour requires a timestamp, got: $other")
+
+      case Minute(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDateTime => d.getMinute
+          case d: LocalDate     => 0
+          case other            => throw IllegalArgumentException(s"Minute requires a timestamp, got: $other")
+
+      case Second(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDateTime => d.getSecond
+          case d: LocalDate     => 0
+          case other            => throw IllegalArgumentException(s"Second requires a timestamp, got: $other")
+
+      case DayOfWeek(e) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else v match
+          case d: LocalDate     => d.getDayOfWeek.getValue   // 1=Mon, 7=Sun (ISO)
+          case d: LocalDateTime => d.getDayOfWeek.getValue
+          case other            => throw IllegalArgumentException(s"DayOfWeek requires a date, got: $other")
+
+      case DateAdd(dateExpr, daysExpr) =>
+        val d = evaluate(dateExpr, row)
+        val n = evaluate(daysExpr, row)
+        if d == null || n == null then null
+        else
+          val days = n match
+            case i: Int    => i.toLong
+            case l: Long   => l
+            case other     => toDouble(other).toLong
+          d match
+            case ld: LocalDate     => ld.plusDays(days)
+            case ldt: LocalDateTime => ldt.plusDays(days)
+            case s                  => LocalDate.parse(s.toString).plusDays(days)
+
+      case DateDiff(endExpr, startExpr) =>
+        val e = evaluate(endExpr, row)
+        val s = evaluate(startExpr, row)
+        if e == null || s == null then null
+        else
+          def toLocalDate(v: Any): LocalDate = v match
+            case d: LocalDate     => d
+            case d: LocalDateTime => d.toLocalDate
+            case str              => LocalDate.parse(str.toString)
+          ChronoUnit.DAYS.between(toLocalDate(s), toLocalDate(e))
+
+      case DateFormat(e, fmt) =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          val formatter = DateTimeFormatter.ofPattern(fmt)
+          v match
+            case d: LocalDate     => d.format(formatter)
+            case d: LocalDateTime => d.format(formatter)
+            case other            => other.toString
 
       // Numeric functions
       case Abs(e)                       =>

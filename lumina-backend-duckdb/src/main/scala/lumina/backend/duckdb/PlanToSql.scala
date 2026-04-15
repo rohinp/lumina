@@ -157,6 +157,22 @@ object PlanToSql:
       val elseSql   = otherwise.map(e => s" ELSE ${exprSql(e)}").getOrElse("")
       s"CASE $branchSql$elseSql END"
 
+    // Date/time expressions
+    case Year(e)            => s"YEAR(${exprSql(e)})"
+    case Month(e)           => s"MONTH(${exprSql(e)})"
+    case Day(e)             => s"DAY(${exprSql(e)})"
+    case Hour(e)            => s"HOUR(${exprSql(e)})"
+    case Minute(e)          => s"MINUTE(${exprSql(e)})"
+    case Second(e)          => s"SECOND(${exprSql(e)})"
+    case DayOfWeek(e)       => s"ISODOW(${exprSql(e)})"   // 1=Mon, 7=Sun — same as Java
+    case ToDate(e)          => s"CAST(${exprSql(e)} AS DATE)"
+    case ToTimestamp(e)     => s"CAST(${exprSql(e)} AS TIMESTAMP)"
+    // DuckDB: DATE + INTEGER adds that many days
+    case DateAdd(d, n)      => s"(${exprSql(d)} + CAST(${exprSql(n)} AS INTEGER))"
+    // DATEDIFF(part, start, end) returns end - start
+    case DateDiff(e, s)     => s"DATEDIFF('day', ${exprSql(s)}, ${exprSql(e)})"
+    case DateFormat(e, fmt) => s"STRFTIME(${exprSql(e)}, '${javaPatternToStrftime(fmt)}')"
+
   // ---------------------------------------------------------------------------
   // Aggregation → SQL fragment
   // ---------------------------------------------------------------------------
@@ -244,12 +260,33 @@ object PlanToSql:
     alias.map(a => s""" AS "$a"""").getOrElse("")
 
   private def sqlType(dt: DataType): String = dt match
-    case DataType.Int32       => "INTEGER"
-    case DataType.Int64       => "BIGINT"
-    case DataType.Float64     => "DOUBLE"
-    case DataType.BooleanType => "BOOLEAN"
-    case DataType.StringType  => "VARCHAR"
-    case DataType.Unknown     => "VARCHAR"
+    case DataType.Int32         => "INTEGER"
+    case DataType.Int64         => "BIGINT"
+    case DataType.Float64       => "DOUBLE"
+    case DataType.BooleanType   => "BOOLEAN"
+    case DataType.StringType    => "VARCHAR"
+    case DataType.DateType      => "DATE"
+    case DataType.TimestampType => "TIMESTAMP"
+    case DataType.Unknown       => "VARCHAR"
+
+  /**
+   * Converts a Java `DateTimeFormatter` pattern to a DuckDB `STRFTIME` format.
+   *
+   * Handles the most common tokens:
+   * {{{
+   *   yyyy → %Y,  yy → %y,  MM → %m,  dd → %d
+   *   HH   → %H,  mm → %M,  ss → %S
+   * }}}
+   */
+  private def javaPatternToStrftime(fmt: String): String =
+    fmt
+      .replace("yyyy", "%Y")
+      .replace("yy",   "%y")
+      .replace("MM",   "%m")
+      .replace("dd",   "%d")
+      .replace("HH",   "%H")
+      .replace("mm",   "%M")
+      .replace("ss",   "%S")
 
   // ---------------------------------------------------------------------------
   // Helpers

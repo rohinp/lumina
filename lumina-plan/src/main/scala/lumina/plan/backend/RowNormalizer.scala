@@ -38,4 +38,7 @@ object RowNormalizer:
     case n: java.lang.Short      => n.intValue()
     case n: java.lang.Byte       => n.intValue()
     case n: java.math.BigDecimal => n.doubleValue()
+    // JDBC date/time types → java.time (matches LocalBackend representation)
+    case d: java.sql.Date        => d.toLocalDate
+    case d: java.sql.Timestamp   => d.toLocalDateTime
     case other                   => other   // String, null, already-unboxed, etc.

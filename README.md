@@ -34,15 +34,21 @@ Lumina separates the **Interface** (user code) from the **Implementation** (exec
 
 ## 4. Current Status
 
-| Milestone | Status | What shipped |
-|-----------|--------|-------------|
-| M1 — API Facade + Logical Plan Core | ✅ Complete | `DataFrame` DSL, plan AST nodes, schema/type system, expression AST, plan-shape tests |
-| M2 — Backend Contract + Registry | ✅ Complete | `LocalBackend` (pure-Scala executor), `DataRegistry`, `CsvLoader`, `BackendRegistry`, `LuminaSession`, `PolarsBackend`/`SparkBackend` stubs |
-| M3 — Multi-language Support | ✅ Complete | `LuminaJava` facade, `Row.of(...)` varargs factory, `Aggregation` Java factories, `Iterable`-based overloads; integration tests compile **and execute** pipelines from Java and Kotlin |
-| M4 — Explain + DuckDB Backend | ✅ Complete | `LogicalPlanPrinter` / `DataFrame.explain()`, `DuckDBBackend` with `PlanToSql` SQL translator, `BackendComplianceSuite` passed, wired into `BackendRegistry.default()` |
-| M5 — Extended Operators | ✅ Complete | `Sort`, `Limit`, `Join` (Inner/Left/Right/Full); `LessThan`, `And`, `Or`, `Not`, `IsNull`, `NotEqualTo`; `Avg`/`Min`/`Max`; implemented in LocalBackend + DuckDB |
-| M6 — Optimizer + Type Normalisation | ✅ Complete | Rule-based optimizer (`CombineFilters`, `PredicatePushdown`); `RowNormalizer` for backend-consistent value types |
-| M7 — Advanced Features | 🔜 Planned | Window functions, UDFs, pushdown through Aggregate |
+Milestones M1–M15 are complete. The framework is fully operational across both execution backends.
+
+**What works today:**
+- Full `DataFrame` DSL: `filter`, `select`, `groupBy`, `sort`, `limit`, `join` (inner/left/right/full), `window`, `unionAll`, `distinct`, `intersect`, `except`, `withColumn`, `drop`, `withColumnRenamed`, `sample`
+- Null-safe operations: `dropNa`, `fillNa`, `IsNull`, `IsNotNull`, `Coalesce`
+- Aggregations: `Sum`, `Count`, `Avg`, `Min`, `Max`, `CountDistinct`, `StdDev`, `Variance`
+- Expressions: arithmetic, string functions (`Upper`, `Lower`, `Trim`, `Length`, `Concat`, `Substring`, `Like`), `CaseWhen`, `Cast`, `Abs`, `Round`, `Floor`, `Ceil`, `In`
+- Window functions: `RowNumber`, `Rank`, `DenseRank`, `WindowAgg`, `Lag`, `Lead`
+- Execution shortcuts: `count`, `head`, `isEmpty`, `nonEmpty`, `agg`
+- Export: `toCsvString`, `writeCsv`, `toJsonLines`, `show`, `describe`
+- Rule-based optimizer with `ConstantFolding`, `CombineFilters`, `PredicatePushdown`, and multi-pass fixed-point iteration
+- Both `LocalBackend` (pure Scala) and `DuckDBBackend` (JDBC) implement all operators
+- Full Java and Kotlin API surface with integration tests
+
+For the complete milestone history and implementation notes, see [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
