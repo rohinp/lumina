@@ -156,6 +156,38 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
             val vals = groupRows.map(r => ExpressionEvaluator.evaluate(colExpr, r))
             val max  = vals.maxBy(v => toDouble(v))
             alias.getOrElse(nameOf(colExpr)) -> max
+
+          case CountDistinct(colExpr, alias) =>
+            val distinct = groupRows
+              .map(r => ExpressionEvaluator.evaluate(colExpr, r))
+              .filter(_ != null)
+              .toSet
+            alias.getOrElse(nameOf(colExpr)) -> distinct.size.toLong
+
+          case StdDev(colExpr, alias) =>
+            val vals = groupRows
+              .map(r => ExpressionEvaluator.evaluate(colExpr, r))
+              .filter(_ != null)
+              .map(toDouble)
+            val result: Any =
+              if vals.size <= 1 then null
+              else
+                val mean     = vals.sum / vals.size
+                val variance = vals.map(v => (v - mean) * (v - mean)).sum / (vals.size - 1)
+                math.sqrt(variance)
+            alias.getOrElse(nameOf(colExpr)) -> result
+
+          case Variance(colExpr, alias) =>
+            val vals = groupRows
+              .map(r => ExpressionEvaluator.evaluate(colExpr, r))
+              .filter(_ != null)
+              .map(toDouble)
+            val result: Any =
+              if vals.size <= 1 then null
+              else
+                val mean = vals.sum / vals.size
+                vals.map(v => (v - mean) * (v - mean)).sum / (vals.size - 1)
+            alias.getOrElse(nameOf(colExpr)) -> result
         }.toMap
 
       Row(groupCols ++ aggCols)
@@ -359,6 +391,24 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
         rows.map(r => ExpressionEvaluator.evaluate(col, r)).minBy(v => toDouble(v))
       case Max(col, _)         =>
         rows.map(r => ExpressionEvaluator.evaluate(col, r)).maxBy(v => toDouble(v))
+
+      case CountDistinct(col, _) =>
+        rows.map(r => ExpressionEvaluator.evaluate(col, r)).filter(_ != null).toSet.size.toLong
+
+      case StdDev(col, _) =>
+        val vals = rows.map(r => ExpressionEvaluator.evaluate(col, r)).filter(_ != null).map(toDouble)
+        if vals.size <= 1 then null
+        else
+          val mean     = vals.sum / vals.size
+          val variance = vals.map(v => (v - mean) * (v - mean)).sum / (vals.size - 1)
+          math.sqrt(variance)
+
+      case Variance(col, _) =>
+        val vals = rows.map(r => ExpressionEvaluator.evaluate(col, r)).filter(_ != null).map(toDouble)
+        if vals.size <= 1 then null
+        else
+          val mean = vals.sum / vals.size
+          vals.map(v => (v - mean) * (v - mean)).sum / (vals.size - 1)
 
   // ---------------------------------------------------------------------------
   // Helpers

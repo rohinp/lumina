@@ -162,12 +162,15 @@ object PlanToSql:
   // ---------------------------------------------------------------------------
 
   private[duckdb] def aggSql(agg: Aggregation): String = agg match
-    case Sum(col, alias)         => s"SUM(${exprSql(col)})${aliasSql(alias)}"
-    case Count(None, alias)      => s"COUNT(*)${aliasSql(alias)}"
-    case Count(Some(col), alias) => s"COUNT(${exprSql(col)})${aliasSql(alias)}"
-    case Avg(col, alias)         => s"AVG(${exprSql(col)})${aliasSql(alias)}"
-    case Min(col, alias)         => s"MIN(${exprSql(col)})${aliasSql(alias)}"
-    case Max(col, alias)         => s"MAX(${exprSql(col)})${aliasSql(alias)}"
+    case Sum(col, alias)             => s"SUM(${exprSql(col)})${aliasSql(alias)}"
+    case Count(None, alias)          => s"COUNT(*)${aliasSql(alias)}"
+    case Count(Some(col), alias)     => s"COUNT(${exprSql(col)})${aliasSql(alias)}"
+    case Avg(col, alias)             => s"AVG(${exprSql(col)})${aliasSql(alias)}"
+    case Min(col, alias)             => s"MIN(${exprSql(col)})${aliasSql(alias)}"
+    case Max(col, alias)             => s"MAX(${exprSql(col)})${aliasSql(alias)}"
+    case CountDistinct(col, alias)   => s"COUNT(DISTINCT ${exprSql(col)})${aliasSql(alias)}"
+    case StdDev(col, alias)          => s"STDDEV(${exprSql(col)})${aliasSql(alias)}"
+    case Variance(col, alias)        => s"VARIANCE(${exprSql(col)})${aliasSql(alias)}"
 
   // ---------------------------------------------------------------------------
   // Window expression → SQL fragment
@@ -192,12 +195,15 @@ object PlanToSql:
 
   /** Renders an aggregation as its bare SQL function (no alias). */
   private def aggFnSql(agg: Aggregation): String = agg match
-    case Sum(col, _)         => s"SUM(${exprSql(col)})"
-    case Count(None, _)      => s"COUNT(*)"
-    case Count(Some(col), _) => s"COUNT(${exprSql(col)})"
-    case Avg(col, _)         => s"AVG(${exprSql(col)})"
-    case Min(col, _)         => s"MIN(${exprSql(col)})"
-    case Max(col, _)         => s"MAX(${exprSql(col)})"
+    case Sum(col, _)           => s"SUM(${exprSql(col)})"
+    case Count(None, _)        => s"COUNT(*)"
+    case Count(Some(col), _)   => s"COUNT(${exprSql(col)})"
+    case Avg(col, _)           => s"AVG(${exprSql(col)})"
+    case Min(col, _)           => s"MIN(${exprSql(col)})"
+    case Max(col, _)           => s"MAX(${exprSql(col)})"
+    case CountDistinct(col, _) => s"COUNT(DISTINCT ${exprSql(col)})"
+    case StdDev(col, _)        => s"STDDEV(${exprSql(col)})"
+    case Variance(col, _)      => s"VARIANCE(${exprSql(col)})"
 
   // ---------------------------------------------------------------------------
 

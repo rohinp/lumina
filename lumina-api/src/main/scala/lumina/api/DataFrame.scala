@@ -209,6 +209,23 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
       df.withColumn(col, Coalesce(Vector(ColumnRef(col), Literal(value))))
     }
 
+  /**
+   * Aggregates the entire DataFrame without grouping — equivalent to
+   * `groupBy(Seq.empty, aggregations)`.  Useful for computing whole-table
+   * statistics such as `COUNT(*)`, `SUM(revenue)`, or `STDDEV(score)`.
+   *
+   * {{{
+   *   df.agg(Aggregation.Count(None, Some("total")),
+   *          Aggregation.Sum(col("revenue"), Some("rev_total")))
+   * }}}
+   */
+  def agg(aggregations: Aggregation*): DataFrame =
+    DataFrame(Aggregate(logicalPlan, Vector.empty, aggregations.toVector, schema = None))
+
+  /** Java/Kotlin API — pass aggregations as an Iterable. */
+  def agg(aggregations: java.lang.Iterable[Aggregation]): DataFrame =
+    DataFrame(Aggregate(logicalPlan, Vector.empty, aggregations.asScala.toVector, schema = None))
+
   /** Executes this DataFrame's plan against the given backend and returns all result rows. */
   def collect(backend: Backend): Vector[Row] =
     backend.execute(logicalPlan) match
@@ -246,6 +263,77 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
    */
   def show(backend: Backend, n: Int = 20): Unit =
     print(showString(backend, n))
+
+  /**
+   * Executes the plan and prints a summary statistics table to standard output.
+   *
+   * Reports `count`, `mean`, `stddev`, `min`, and `max` for every column.
+   * Non-numeric columns show `N/A` for `mean` / `stddev`; their `min` / `max`
+   * are the lexicographic extremes.
+   *
+   * {{{
+   * df.describe(backend)
+   * // +---------+-------+--------+--------+
+   * // | summary | age   | score  | city   |
+   * // +---------+-------+--------+--------+
+   * // | count   | 5     | 5      | 5      |
+   * // | mean    | 32.2  | 77.0   | N/A    |
+   * // | stddev  | 4.087 | 13.601 | N/A    |
+   * // | min     | 28.0  | 60.0   | Berlin |
+   * // | max     | 38.0  | 95.0   | Tokyo  |
+   * // +---------+-------+--------+--------+
+   * }}}
+   */
+  def describe(backend: Backend): Unit = print(describeString(backend))
+
+  /** Returns the summary statistics string that [[describe]] prints. */
+  def describeString(backend: Backend): String =
+    val rows = collect(backend)
+    if rows.isEmpty then return "++ (empty)\n"
+    val cols = rows.head.values.keys.toVector
+
+    def tryDouble(v: Any): Option[Double] = v match
+      case n: Int                  => Some(n.toDouble)
+      case n: Long                 => Some(n.toDouble)
+      case n: Double               => Some(n)
+      case n: Float                => Some(n.toDouble)
+      case n: java.lang.Number     => Some(n.doubleValue())
+      case s: String               => scala.util.Try(s.toDouble).toOption
+      case _                       => None
+
+    val colStats: Vector[Vector[String]] = cols.map { col =>
+      val nonNull = rows.map(_.values(col)).filter(_ != null)
+      val doubles = nonNull.flatMap(tryDouble)
+      val count  = nonNull.size.toString
+      val mean   = if doubles.isEmpty then "N/A"
+                   else f"${doubles.sum / doubles.size}%.6g"
+      val stddev = if doubles.size <= 1 then "N/A"
+                   else
+                     val m = doubles.sum / doubles.size
+                     val v = doubles.map(d => (d - m) * (d - m)).sum / (doubles.size - 1)
+                     f"${math.sqrt(v)}%.6g"
+      val min    = if doubles.nonEmpty then f"${doubles.min}%.6g"
+                   else nonNull.map(_.toString).minOption.getOrElse("N/A")
+      val max    = if doubles.nonEmpty then f"${doubles.max}%.6g"
+                   else nonNull.map(_.toString).maxOption.getOrElse("N/A")
+      Vector(count, mean, stddev, min, max)
+    }
+
+    val statNames = Vector("count", "mean", "stddev", "min", "max")
+    val dataRows: Vector[Vector[String]] = statNames.zipWithIndex.map { (stat, i) =>
+      stat +: cols.indices.map(j => colStats(j)(i)).toVector
+    }
+
+    val allCols = "summary" +: cols
+    val widths  = allCols.zipWithIndex.map { (col, i) =>
+      math.max(col.length, dataRows.map(_(i).length).maxOption.getOrElse(0))
+    }
+    val sep    = "+" + widths.map(w => "-" * (w + 2)).mkString("+") + "+"
+    val header = "| " + allCols.zipWithIndex.map { (c, i) => c.padTo(widths(i), ' ') }.mkString(" | ") + " |"
+    val body   = dataRows.map { row =>
+      "| " + row.zipWithIndex.map { (v, i) => v.padTo(widths(i), ' ') }.mkString(" | ") + " |"
+    }
+    (Seq(sep, header, sep) ++ body ++ Seq(sep)).mkString("\n") + "\n"
 
   /** Returns the formatted table string that [[show]] prints. */
   def showString(backend: Backend, n: Int = 20): String =

@@ -118,16 +118,37 @@ object Aggregation:
   final case class Min(column: Expression,  alias: Option[String] = None) extends Aggregation
   final case class Max(column: Expression,  alias: Option[String] = None) extends Aggregation
 
+  /** Counts distinct non-null values.  Maps to SQL `COUNT(DISTINCT col)`. */
+  final case class CountDistinct(column: Expression, alias: Option[String] = None) extends Aggregation
+
+  /**
+   * Sample standard deviation (divides by N−1).  Returns null when the group
+   * contains fewer than two non-null values, matching SQL `STDDEV(col)`.
+   */
+  final case class StdDev(column: Expression, alias: Option[String] = None) extends Aggregation
+
+  /**
+   * Sample variance (divides by N−1).  Returns null when the group contains
+   * fewer than two non-null values, matching SQL `VARIANCE(col)`.
+   */
+  final case class Variance(column: Expression, alias: Option[String] = None) extends Aggregation
+
   // Java/Kotlin-friendly factories — return Aggregation (not the subtype) so
   // java.util.List.of(Aggregation.sum(...)) infers List<Aggregation> in Kotlin.
 
-  def sum(column: Expression, alias: String): Aggregation  = Sum(column, Some(alias))
-  def sum(column: Expression): Aggregation                 = Sum(column, None)
-  def avg(column: Expression, alias: String): Aggregation  = Avg(column, Some(alias))
-  def avg(column: Expression): Aggregation                 = Avg(column, None)
-  def min(column: Expression, alias: String): Aggregation  = Min(column, Some(alias))
-  def min(column: Expression): Aggregation                 = Min(column, None)
-  def max(column: Expression, alias: String): Aggregation  = Max(column, Some(alias))
-  def max(column: Expression): Aggregation                 = Max(column, None)
-  def countAll(alias: String): Aggregation                 = Count(None, Some(alias))
-  def count(column: Expression, alias: String): Aggregation = Count(Some(column), Some(alias))
+  def sum(column: Expression, alias: String): Aggregation          = Sum(column, Some(alias))
+  def sum(column: Expression): Aggregation                         = Sum(column, None)
+  def avg(column: Expression, alias: String): Aggregation          = Avg(column, Some(alias))
+  def avg(column: Expression): Aggregation                         = Avg(column, None)
+  def min(column: Expression, alias: String): Aggregation          = Min(column, Some(alias))
+  def min(column: Expression): Aggregation                         = Min(column, None)
+  def max(column: Expression, alias: String): Aggregation          = Max(column, Some(alias))
+  def max(column: Expression): Aggregation                         = Max(column, None)
+  def countAll(alias: String): Aggregation                         = Count(None, Some(alias))
+  def count(column: Expression, alias: String): Aggregation        = Count(Some(column), Some(alias))
+  def countDistinct(column: Expression, alias: String): Aggregation = CountDistinct(column, Some(alias))
+  def countDistinct(column: Expression): Aggregation                = CountDistinct(column, None)
+  def stddev(column: Expression, alias: String): Aggregation        = StdDev(column, Some(alias))
+  def stddev(column: Expression): Aggregation                       = StdDev(column, None)
+  def variance(column: Expression, alias: String): Aggregation      = Variance(column, Some(alias))
+  def variance(column: Expression): Aggregation                     = Variance(column, None)

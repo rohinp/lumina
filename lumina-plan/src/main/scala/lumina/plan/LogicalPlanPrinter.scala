@@ -167,9 +167,12 @@ object LogicalPlanPrinter:
       case Lead(expr, n, alias, _)   => s"LEAD(${exprStr(expr)}, $n) $over AS $alias"
 
   private def aggStr(agg: Aggregation): String = agg match
-    case Sum(col, alias)         => s"SUM(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
-    case Count(None, alias)      => s"COUNT(*)${alias.map(a => s" AS $a").getOrElse("")}"
-    case Count(Some(col), alias) => s"COUNT(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
-    case Avg(col, alias)         => s"AVG(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
-    case Min(col, alias)         => s"MIN(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
-    case Max(col, alias)         => s"MAX(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Sum(col, alias)             => s"SUM(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Count(None, alias)          => s"COUNT(*)${alias.map(a => s" AS $a").getOrElse("")}"
+    case Count(Some(col), alias)     => s"COUNT(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Avg(col, alias)             => s"AVG(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Min(col, alias)             => s"MIN(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Max(col, alias)             => s"MAX(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case CountDistinct(col, alias)   => s"COUNT(DISTINCT ${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case StdDev(col, alias)          => s"STDDEV(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Variance(col, alias)        => s"VARIANCE(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
