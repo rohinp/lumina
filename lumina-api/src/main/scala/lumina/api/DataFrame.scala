@@ -251,6 +251,76 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
       }
       (Seq(sep, header, sep) ++ body ++ Seq(sep, s"${rows.size} row(s)\n")).mkString("\n")
 
+  // ---------------------------------------------------------------------------
+  // Export / write
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the result as a CSV-formatted string.
+   *
+   * Column names appear as the first row when `includeHeader` is true (the
+   * default).  Values are CSV-escaped: fields that contain commas, double-
+   * quotes, or newlines are wrapped in double-quotes and embedded quotes are
+   * doubled.
+   */
+  def toCsvString(backend: Backend, includeHeader: Boolean = true): String =
+    val rows = collect(backend)
+    if rows.isEmpty then return if includeHeader then "" else ""
+    val cols   = rows.head.values.keys.toVector
+    val header = if includeHeader then cols.map(csvEscape).mkString(",") + "\n" else ""
+    val body   = rows.map { row =>
+      cols.map(c => csvEscape(Option(row.values(c)).map(_.toString).getOrElse(""))).mkString(",")
+    }.mkString("\n")
+    header + body
+
+  /**
+   * Executes the plan and writes the result to `path` as a UTF-8 CSV file.
+   *
+   * The file is overwritten if it already exists.  See [[toCsvString]] for
+   * formatting details.
+   */
+  def writeCsv(path: String, backend: Backend, includeHeader: Boolean = true): Unit =
+    val content = toCsvString(backend, includeHeader)
+    java.nio.file.Files.writeString(java.nio.file.Paths.get(path), content,
+      java.nio.charset.StandardCharsets.UTF_8)
+
+  /**
+   * Returns the result as a newline-delimited JSON string (one JSON object per
+   * row).  Values are encoded as JSON strings, numbers, booleans, or `null`.
+   *
+   * {{{
+   *   {"city":"Paris","revenue":1000.0}
+   *   {"city":"Berlin","revenue":2000.0}
+   * }}}
+   */
+  def toJsonLines(backend: Backend): String =
+    collect(backend).map(rowToJson).mkString("\n")
+
+  // ---------------------------------------------------------------------------
+  // Internal helpers
+  // ---------------------------------------------------------------------------
+
+  private def csvEscape(value: String): String =
+    if value.exists(c => c == ',' || c == '"' || c == '\n' || c == '\r') then
+      "\"" + value.replace("\"", "\"\"") + "\""
+    else value
+
+  private def rowToJson(row: Row): String =
+    val fields = row.values.map { case (k, v) =>
+      val key   = "\"" + k.replace("\"", "\\\"") + "\""
+      val value = v match
+        case null        => "null"
+        case b: Boolean  => b.toString
+        case n: Int      => n.toString
+        case n: Long     => n.toString
+        case n: Double   => n.toString
+        case n: Float    => n.toString
+        case n: java.lang.Number => n.toString
+        case s           => "\"" + s.toString.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+      s"$key:$value"
+    }.mkString(",")
+    s"{$fields}"
+
   /** Gives access to the underlying logical plan for advanced tooling. */
   def plan: LogicalPlan = logicalPlan
 

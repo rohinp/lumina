@@ -20,10 +20,14 @@ object Optimizer:
   /**
    * The default rule set applied by [[optimize]] when no rules are supplied.
    *
-   * Order matters: CombineFilters runs first so PredicatePushdown sees merged
-   * filters rather than chains of single-condition Filter nodes.
+   * Execution order:
+   *  1. [[ConstantFolding]] — collapse all-literal sub-expressions so later
+   *     rules see simpler conditions (e.g. `And(true, cond)` → `cond`).
+   *  2. [[CombineFilters]] — merge consecutive Filter nodes into one `And`.
+   *  3. [[PredicatePushdown]] — move filters closer to the data source.
    */
   val defaultRules: Seq[Rule] = Seq(
+    ConstantFolding,
     CombineFilters,
     PredicatePushdown
   )
