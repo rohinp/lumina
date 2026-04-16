@@ -53,6 +53,21 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
     DataFrame(Join(logicalPlan, other.logicalPlan, None, JoinType.Inner))
 
   /**
+   * Semi-join: keeps rows from this DataFrame for which at least one matching
+   * row exists in `other` according to `condition`.  Only left-side columns
+   * are included in the result.
+   */
+  def semiJoin(other: DataFrame, condition: Expression): DataFrame =
+    DataFrame(Join(logicalPlan, other.logicalPlan, Some(condition), JoinType.Semi))
+
+  /**
+   * Anti-join: keeps rows from this DataFrame for which no matching row exists
+   * in `other` according to `condition`.  Only left-side columns are included.
+   */
+  def antiJoin(other: DataFrame, condition: Expression): DataFrame =
+    DataFrame(Join(logicalPlan, other.logicalPlan, Some(condition), JoinType.Anti))
+
+  /**
    * Adds or replaces a column by evaluating `expr` against each row.
    *
    * If `name` already exists in the result the old value is overwritten;

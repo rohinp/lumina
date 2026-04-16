@@ -63,7 +63,24 @@ final case class Limit(child: LogicalPlan, count: Int) extends LogicalPlan:
 
 /** How columns are matched when joining two datasets. */
 enum JoinType:
-  case Inner, Left, Right, Full
+  /** Keeps only rows with a match on both sides; output includes all columns from both sides. */
+  case Inner
+  /** Outer join — unmatched left rows are filled with nulls on the right; output includes all columns. */
+  case Left
+  /** Outer join — unmatched right rows are filled with nulls on the left; output includes all columns. */
+  case Right
+  /** Full outer join — all rows from both sides, nulls where there is no match; output includes all columns. */
+  case Full
+  /**
+   * Semi-join: keeps left rows for which at least one matching right row exists.
+   * Output includes only left-side columns (the right dataset is used purely as a filter).
+   */
+  case Semi
+  /**
+   * Anti-join: keeps left rows for which no matching right row exists.
+   * Output includes only left-side columns (the right dataset is used purely as a filter).
+   */
+  case Anti
 
 /**
  * Adds one or more window-function columns to each row without changing the

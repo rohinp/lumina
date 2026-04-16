@@ -217,6 +217,8 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
       case JoinType.Left  => leftOuterJoin(leftRows, rightRows, condition)
       case JoinType.Right => leftOuterJoin(rightRows, leftRows, condition)
       case JoinType.Full  => fullOuterJoin(leftRows, rightRows, condition)
+      case JoinType.Semi  => leftRows.filter(l => rightRows.exists(r => matchesCond(l, r, condition)))
+      case JoinType.Anti  => leftRows.filter(l => !rightRows.exists(r => matchesCond(l, r, condition)))
 
   private def mergeRows(left: Row, right: Row): Row =
     Row(left.values ++ right.values)

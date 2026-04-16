@@ -59,15 +59,30 @@ object PlanToSql:
       s"SELECT * FROM (${render(child)}) AS _limited LIMIT $count"
 
     case Join(left, right, condition, joinType) =>
-      val joinKeyword = joinType match
-        case JoinType.Inner => "INNER JOIN"
-        case JoinType.Left  => "LEFT JOIN"
-        case JoinType.Right => "RIGHT JOIN"
-        case JoinType.Full  => "FULL OUTER JOIN"
-      // Table-qualify column references in the ON clause so DuckDB can resolve
-      // them unambiguously when both sides share column names.
-      val onClause = condition.map(c => s" ON ${joinExprSql(c, "_join_left", "_join_right")}").getOrElse("")
-      s"SELECT * FROM (${render(left)}) AS _join_left $joinKeyword (${render(right)}) AS _join_right$onClause"
+      joinType match
+        case JoinType.Semi =>
+          // EXISTS correlated subquery: keeps left rows with at least one match on the right
+          val whereClause = condition
+            .map(c => s" WHERE ${joinExprSql(c, "_join_left", "_join_right")}")
+            .getOrElse("")
+          s"SELECT _join_left.* FROM (${render(left)}) AS _join_left WHERE EXISTS (SELECT 1 FROM (${render(right)}) AS _join_right$whereClause)"
+        case JoinType.Anti =>
+          // NOT EXISTS correlated subquery: keeps left rows with no match on the right
+          val whereClause = condition
+            .map(c => s" WHERE ${joinExprSql(c, "_join_left", "_join_right")}")
+            .getOrElse("")
+          s"SELECT _join_left.* FROM (${render(left)}) AS _join_left WHERE NOT EXISTS (SELECT 1 FROM (${render(right)}) AS _join_right$whereClause)"
+        case _ =>
+          val joinKeyword = joinType match
+            case JoinType.Inner => "INNER JOIN"
+            case JoinType.Left  => "LEFT JOIN"
+            case JoinType.Right => "RIGHT JOIN"
+            case JoinType.Full  => "FULL OUTER JOIN"
+            case _              => throw IllegalStateException("unreachable")
+          // Table-qualify column references in the ON clause so DuckDB can resolve
+          // them unambiguously when both sides share column names.
+          val onClause = condition.map(c => s" ON ${joinExprSql(c, "_join_left", "_join_right")}").getOrElse("")
+          s"SELECT * FROM (${render(left)}) AS _join_left $joinKeyword (${render(right)}) AS _join_right$onClause"
 
     case Window(child, windowExprs) =>
       val winCols = windowExprs.map(windowExprSql).mkString(", ")
