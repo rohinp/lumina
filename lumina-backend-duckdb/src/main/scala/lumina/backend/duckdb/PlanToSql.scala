@@ -173,6 +173,16 @@ object PlanToSql:
     case Round(e, s)    => s"ROUND(${exprSql(e)}, $s)"
     case Floor(e)       => s"FLOOR(${exprSql(e)})"
     case Ceil(e)        => s"CEIL(${exprSql(e)})"
+    case Sqrt(e)        => s"SQRT(${exprSql(e)})"
+    case Power(b, exp)  => s"POWER(${exprSql(b)}, ${exprSql(exp)})"
+    case Log(e)         => s"LN(${exprSql(e)})"
+    case Log2(e)        => s"LOG2(${exprSql(e)})"
+    case Log10(e)       => s"LOG10(${exprSql(e)})"
+    case Exp(e)         => s"EXP(${exprSql(e)})"
+    case Sign(e)        => s"SIGN(${exprSql(e)})"
+    case Mod(d, v)      => s"(${exprSql(d)} % ${exprSql(v)})"
+    case Greatest(es)   => s"GREATEST(${es.map(exprSql).mkString(", ")})"
+    case Least(es)      => s"LEAST(${es.map(exprSql).mkString(", ")})"
 
     // Set membership — empty IN list is always false; non-empty emits SQL IN (...)
     case In(_, values) if values.isEmpty => "FALSE"

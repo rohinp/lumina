@@ -316,6 +316,42 @@ object ExpressionEvaluator:
       case Ceil(e)                      =>
         val v = evaluate(e, row)
         if v == null then null else math.ceil(toDouble(v))
+      case Sqrt(e)                      =>
+        val v = evaluate(e, row)
+        if v == null then null else math.sqrt(toDouble(v))
+      case Power(b, exp)                =>
+        val bv  = evaluate(b, row)
+        val ev  = evaluate(exp, row)
+        if bv == null || ev == null then null else math.pow(toDouble(bv), toDouble(ev))
+      case Log(e)                       =>
+        val v = evaluate(e, row)
+        if v == null then null else math.log(toDouble(v))
+      case Log2(e)                      =>
+        val v = evaluate(e, row)
+        if v == null then null else math.log(toDouble(v)) / math.log(2.0)
+      case Log10(e)                     =>
+        val v = evaluate(e, row)
+        if v == null then null else math.log10(toDouble(v))
+      case Exp(e)                       =>
+        val v = evaluate(e, row)
+        if v == null then null else math.exp(toDouble(v))
+      case Sign(e)                      =>
+        val v = evaluate(e, row)
+        if v == null then null
+        else
+          val d = toDouble(v)
+          if d > 0.0 then 1.0 else if d < 0.0 then -1.0 else 0.0
+      case Mod(dividend, divisor)       =>
+        val d = evaluate(dividend, row)
+        val v = evaluate(divisor, row)
+        if d == null || v == null then null
+        else toDouble(d) % toDouble(v)
+      case Greatest(exprs)              =>
+        val vals = exprs.map(evaluate(_, row)).filter(_ != null)
+        if vals.isEmpty then null else vals.map(toDouble).max
+      case Least(exprs)                 =>
+        val vals = exprs.map(evaluate(_, row)).filter(_ != null)
+        if vals.isEmpty then null else vals.map(toDouble).min
 
       // Conditional
       case CaseWhen(branches, otherwise) =>

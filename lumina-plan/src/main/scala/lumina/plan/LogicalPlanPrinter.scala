@@ -153,6 +153,16 @@ object LogicalPlanPrinter:
     case Round(e, scale)              => s"ROUND(${exprStr(e)}, $scale)"
     case Floor(e)                     => s"FLOOR(${exprStr(e)})"
     case Ceil(e)                      => s"CEIL(${exprStr(e)})"
+    case Sqrt(e)                      => s"SQRT(${exprStr(e)})"
+    case Power(b, exp)                => s"POWER(${exprStr(b)}, ${exprStr(exp)})"
+    case Log(e)                       => s"LOG(${exprStr(e)})"
+    case Log2(e)                      => s"LOG2(${exprStr(e)})"
+    case Log10(e)                     => s"LOG10(${exprStr(e)})"
+    case Exp(e)                       => s"EXP(${exprStr(e)})"
+    case Sign(e)                      => s"SIGN(${exprStr(e)})"
+    case Mod(d, v)                    => s"MOD(${exprStr(d)}, ${exprStr(v)})"
+    case Greatest(exprs)              => s"GREATEST(${exprs.map(exprStr).mkString(", ")})"
+    case Least(exprs)                 => s"LEAST(${exprs.map(exprStr).mkString(", ")})"
     case CaseWhen(branches, otherwise) =>
       val branchStr   = branches.map { case (c, v) => s"WHEN ${exprStr(c)} THEN ${exprStr(v)}" }.mkString(" ")
       val elseStr     = otherwise.map(e => s" ELSE ${exprStr(e)}").getOrElse("")

@@ -125,6 +125,26 @@ object Expression:
   final case class Floor(expr: Expression) extends Expression
   /** Returns the smallest integer not less than the expression value. */
   final case class Ceil(expr: Expression) extends Expression
+  /** Returns the square root of a non-negative numeric expression. */
+  final case class Sqrt(expr: Expression) extends Expression
+  /** Raises `base` to the power of `exponent`. */
+  final case class Power(base: Expression, exponent: Expression) extends Expression
+  /** Returns the natural logarithm (base e) of a positive numeric expression. */
+  final case class Log(expr: Expression) extends Expression
+  /** Returns the base-2 logarithm of a positive numeric expression. */
+  final case class Log2(expr: Expression) extends Expression
+  /** Returns the base-10 logarithm of a positive numeric expression. */
+  final case class Log10(expr: Expression) extends Expression
+  /** Returns e raised to the power of the numeric expression. */
+  final case class Exp(expr: Expression) extends Expression
+  /** Returns the sign of the numeric expression: -1.0, 0.0, or 1.0. */
+  final case class Sign(expr: Expression) extends Expression
+  /** Returns the modulo (remainder) of dividing `dividend` by `divisor`. */
+  final case class Mod(dividend: Expression, divisor: Expression) extends Expression
+  /** Returns the greatest (maximum) value among two or more expressions. */
+  final case class Greatest(exprs: Vector[Expression]) extends Expression
+  /** Returns the least (minimum) value among two or more expressions. */
+  final case class Least(exprs: Vector[Expression]) extends Expression
 
   // Date/time component extraction
   /** Extracts the 4-digit year from a date or timestamp value. */

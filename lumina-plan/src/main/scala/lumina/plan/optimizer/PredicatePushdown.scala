@@ -182,6 +182,16 @@ object PredicatePushdown extends Rule:
     case Round(e, _)   => referencedColumns(e)
     case Floor(e)      => referencedColumns(e)
     case Ceil(e)       => referencedColumns(e)
+    case Sqrt(e)       => referencedColumns(e)
+    case Power(b, exp) => referencedColumns(b) ++ referencedColumns(exp)
+    case Log(e)        => referencedColumns(e)
+    case Log2(e)       => referencedColumns(e)
+    case Log10(e)      => referencedColumns(e)
+    case Exp(e)        => referencedColumns(e)
+    case Sign(e)       => referencedColumns(e)
+    case Mod(d, v)     => referencedColumns(d) ++ referencedColumns(v)
+    case Greatest(es)  => es.flatMap(referencedColumns).toSet
+    case Least(es)     => es.flatMap(referencedColumns).toSet
     // Date/time expressions
     case Year(e)             => referencedColumns(e)
     case Month(e)            => referencedColumns(e)
