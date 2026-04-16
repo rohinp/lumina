@@ -188,6 +188,13 @@ object PlanToSql:
     case In(_, values) if values.isEmpty => "FALSE"
     case In(e, values)                   => s"${exprSql(e)} IN (${values.map(exprSql).mkString(", ")})"
 
+    case Between(e, lo, hi) =>
+      // DuckDB BETWEEN returns NULL for NULL input; COALESCE to match LocalBackend (returns false)
+      s"COALESCE((${exprSql(e)} BETWEEN ${exprSql(lo)} AND ${exprSql(hi)}), false)"
+    case If(c, t, e)        => s"CASE WHEN ${exprSql(c)} THEN ${exprSql(t)} ELSE ${exprSql(e)} END"
+    case NullIf(e, nv)      => s"NULLIF(${exprSql(e)}, ${exprSql(nv)})"
+    case IfNull(e, r)       => s"IFNULL(${exprSql(e)}, ${exprSql(r)})"
+
     // Conditional
     case CaseWhen(branches, otherwise) =>
       val branchSql = branches.map { case (c, v) => s"WHEN ${exprSql(c)} THEN ${exprSql(v)}" }.mkString(" ")

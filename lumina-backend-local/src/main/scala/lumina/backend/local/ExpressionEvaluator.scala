@@ -23,10 +23,18 @@ object ExpressionEvaluator:
     expr match
       case ColumnRef(name)          => row.values.getOrElse(name, null)
       case Literal(value)           => value
-      case GreaterThan(l, r)        => compareValues(evaluate(l, row), evaluate(r, row)) > 0
-      case GreaterThanOrEqual(l, r) => compareValues(evaluate(l, row), evaluate(r, row)) >= 0
-      case LessThan(l, r)           => compareValues(evaluate(l, row), evaluate(r, row)) < 0
-      case LessThanOrEqual(l, r)    => compareValues(evaluate(l, row), evaluate(r, row)) <= 0
+      case GreaterThan(l, r)        =>
+        val lv = evaluate(l, row); val rv = evaluate(r, row)
+        if lv == null || rv == null then false else compareValues(lv, rv) > 0
+      case GreaterThanOrEqual(l, r) =>
+        val lv = evaluate(l, row); val rv = evaluate(r, row)
+        if lv == null || rv == null then false else compareValues(lv, rv) >= 0
+      case LessThan(l, r)           =>
+        val lv = evaluate(l, row); val rv = evaluate(r, row)
+        if lv == null || rv == null then false else compareValues(lv, rv) < 0
+      case LessThanOrEqual(l, r)    =>
+        val lv = evaluate(l, row); val rv = evaluate(r, row)
+        if lv == null || rv == null then false else compareValues(lv, rv) <= 0
       case EqualTo(l, r)            => equalValues(evaluate(l, row), evaluate(r, row))
       case NotEqualTo(l, r)         => !equalValues(evaluate(l, row), evaluate(r, row))
       case And(l, r)                =>
@@ -360,6 +368,24 @@ object ExpressionEvaluator:
           .map  { case (_, value) => evaluate(value, row) }
           .orElse(otherwise.map(evaluate(_, row)))
           .orNull
+
+      case Between(e, lo, hi) =>
+        val v  = evaluate(e, row)
+        if v == null then false
+        else compareValues(v, evaluate(lo, row)) >= 0 && compareValues(v, evaluate(hi, row)) <= 0
+
+      case If(cond, thenExpr, elseExpr) =>
+        if evaluatePredicate(cond, row) then evaluate(thenExpr, row)
+        else evaluate(elseExpr, row)
+
+      case NullIf(e, nullValue) =>
+        val v  = evaluate(e, row)
+        val nv = evaluate(nullValue, row)
+        if equalValues(v, nv) then null else v
+
+      case IfNull(e, replacement) =>
+        val v = evaluate(e, row)
+        if v == null then evaluate(replacement, row) else v
 
   /** Evaluate a predicate expression; throws if the result is not a Boolean. */
   def evaluatePredicate(expr: Expression, row: Row): Boolean =

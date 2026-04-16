@@ -177,6 +177,10 @@ object PredicatePushdown extends Rule:
     case CaseWhen(branches, otherwise) =>
       branches.flatMap { case (c, v) => referencedColumns(c) ++ referencedColumns(v) }.toSet ++
       otherwise.map(referencedColumns).getOrElse(Set.empty)
+    case Between(e, lo, hi) => referencedColumns(e) ++ referencedColumns(lo) ++ referencedColumns(hi)
+    case If(c, t, e)        => referencedColumns(c) ++ referencedColumns(t) ++ referencedColumns(e)
+    case NullIf(e, nv)      => referencedColumns(e) ++ referencedColumns(nv)
+    case IfNull(e, r)       => referencedColumns(e) ++ referencedColumns(r)
     case Cast(e, _)    => referencedColumns(e)
     case Abs(e)        => referencedColumns(e)
     case Round(e, _)   => referencedColumns(e)

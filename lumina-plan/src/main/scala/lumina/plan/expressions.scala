@@ -218,6 +218,31 @@ object Expression:
       otherwise: Option[Expression] = None
   ) extends Expression
 
+  /**
+   * Returns true when `expr` is between `lower` and `upper` (inclusive).
+   * Equivalent to SQL `expr BETWEEN lower AND upper`.
+   * Returns false when `expr` is null.
+   */
+  final case class Between(expr: Expression, lower: Expression, upper: Expression) extends Expression
+
+  /**
+   * Returns `thenExpr` when `condition` is true, otherwise `elseExpr`.
+   * A concise two-branch conditional that compiles to `CASE WHEN … THEN … ELSE … END`.
+   */
+  final case class If(condition: Expression, thenExpr: Expression, elseExpr: Expression) extends Expression
+
+  /**
+   * Returns null when `expr` equals `nullValue`; otherwise returns `expr`.
+   * Equivalent to SQL `NULLIF(expr, nullValue)`.
+   */
+  final case class NullIf(expr: Expression, nullValue: Expression) extends Expression
+
+  /**
+   * Returns `replacement` when `expr` is null; otherwise returns `expr`.
+   * Equivalent to SQL `IFNULL(expr, replacement)` / `COALESCE(expr, replacement)`.
+   */
+  final case class IfNull(expr: Expression, replacement: Expression) extends Expression
+
 sealed trait Aggregation
 
 object Aggregation:

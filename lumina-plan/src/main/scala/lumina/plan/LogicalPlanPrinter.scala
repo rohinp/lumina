@@ -167,6 +167,10 @@ object LogicalPlanPrinter:
       val branchStr   = branches.map { case (c, v) => s"WHEN ${exprStr(c)} THEN ${exprStr(v)}" }.mkString(" ")
       val elseStr     = otherwise.map(e => s" ELSE ${exprStr(e)}").getOrElse("")
       s"CASE $branchStr$elseStr END"
+    case Between(e, lo, hi) => s"${exprStr(e)} BETWEEN ${exprStr(lo)} AND ${exprStr(hi)}"
+    case If(c, t, e)        => s"IF(${exprStr(c)}, ${exprStr(t)}, ${exprStr(e)})"
+    case NullIf(e, nv)      => s"NULLIF(${exprStr(e)}, ${exprStr(nv)})"
+    case IfNull(e, r)       => s"IFNULL(${exprStr(e)}, ${exprStr(r)})"
 
     // Date/time expressions
     case Year(e)                 => s"YEAR(${exprStr(e)})"
