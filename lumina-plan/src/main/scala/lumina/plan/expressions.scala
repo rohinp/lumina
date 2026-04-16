@@ -267,6 +267,28 @@ object Aggregation:
    */
   final case class Variance(column: Expression, alias: Option[String] = None) extends Aggregation
 
+  /**
+   * Returns the first non-null value encountered in the group, in input order.
+   * Returns null when the group is empty or all values are null.
+   * Without an explicit sort the result is deterministic only when the input has
+   * a stable row order (e.g. after a Sort node above a ReadCsv).
+   */
+  final case class First(column: Expression, alias: Option[String] = None) extends Aggregation
+
+  /**
+   * Returns the last non-null value encountered in the group, in input order.
+   * Returns null when the group is empty or all values are null.
+   */
+  final case class Last(column: Expression, alias: Option[String] = None) extends Aggregation
+
+  /**
+   * Returns the median (middle value) of the non-null values in the group.
+   * For an even number of non-null values the average of the two middle values
+   * is returned (matching SQL `PERCENTILE_CONT(0.5)`).
+   * Returns null when the group contains no non-null values.
+   */
+  final case class Median(column: Expression, alias: Option[String] = None) extends Aggregation
+
   // Java/Kotlin-friendly factories — return Aggregation (not the subtype) so
   // java.util.List.of(Aggregation.sum(...)) infers List<Aggregation> in Kotlin.
 
@@ -285,4 +307,10 @@ object Aggregation:
   def stddev(column: Expression, alias: String): Aggregation        = StdDev(column, Some(alias))
   def stddev(column: Expression): Aggregation                       = StdDev(column, None)
   def variance(column: Expression, alias: String): Aggregation      = Variance(column, Some(alias))
+  def first(column: Expression, alias: String): Aggregation         = First(column, Some(alias))
+  def first(column: Expression): Aggregation                        = First(column, None)
+  def last(column: Expression, alias: String): Aggregation          = Last(column, Some(alias))
+  def last(column: Expression): Aggregation                         = Last(column, None)
+  def median(column: Expression, alias: String): Aggregation        = Median(column, Some(alias))
+  def median(column: Expression): Aggregation                       = Median(column, None)
   def variance(column: Expression): Aggregation                     = Variance(column, None)

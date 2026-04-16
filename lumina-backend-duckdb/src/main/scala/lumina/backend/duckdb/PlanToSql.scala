@@ -246,6 +246,9 @@ object PlanToSql:
     case CountDistinct(col, alias)   => s"COUNT(DISTINCT ${exprSql(col)})${aliasSql(alias)}"
     case StdDev(col, alias)          => s"STDDEV(${exprSql(col)})${aliasSql(alias)}"
     case Variance(col, alias)        => s"VARIANCE(${exprSql(col)})${aliasSql(alias)}"
+    case First(col, alias)           => s"FIRST(${exprSql(col)})${aliasSql(alias)}"
+    case Last(col, alias)            => s"LAST(${exprSql(col)})${aliasSql(alias)}"
+    case Median(col, alias)          => s"MEDIAN(${exprSql(col)})${aliasSql(alias)}"
 
   // ---------------------------------------------------------------------------
   // Window expression → SQL fragment
@@ -279,6 +282,9 @@ object PlanToSql:
     case CountDistinct(col, _) => s"COUNT(DISTINCT ${exprSql(col)})"
     case StdDev(col, _)        => s"STDDEV(${exprSql(col)})"
     case Variance(col, _)      => s"VARIANCE(${exprSql(col)})"
+    case First(col, _)         => s"FIRST(${exprSql(col)})"
+    case Last(col, _)          => s"LAST(${exprSql(col)})"
+    case Median(col, _)        => s"MEDIAN(${exprSql(col)})"
 
   // ---------------------------------------------------------------------------
 

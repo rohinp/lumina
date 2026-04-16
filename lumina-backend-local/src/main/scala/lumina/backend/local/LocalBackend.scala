@@ -188,6 +188,35 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
                 val mean = vals.sum / vals.size
                 vals.map(v => (v - mean) * (v - mean)).sum / (vals.size - 1)
             alias.getOrElse(nameOf(colExpr)) -> result
+
+          case First(colExpr, alias) =>
+            val result = groupRows
+              .map(r => ExpressionEvaluator.evaluate(colExpr, r))
+              .find(_ != null)
+              .orNull
+            alias.getOrElse(nameOf(colExpr)) -> result
+
+          case Last(colExpr, alias) =>
+            val result = groupRows
+              .map(r => ExpressionEvaluator.evaluate(colExpr, r))
+              .filter(_ != null)
+              .lastOption
+              .orNull
+            alias.getOrElse(nameOf(colExpr)) -> result
+
+          case Median(colExpr, alias) =>
+            val sorted = groupRows
+              .map(r => ExpressionEvaluator.evaluate(colExpr, r))
+              .filter(_ != null)
+              .map(toDouble)
+              .sorted
+            val result: Any =
+              if sorted.isEmpty then null
+              else
+                val n = sorted.size
+                if n % 2 == 1 then sorted(n / 2)
+                else (sorted(n / 2 - 1) + sorted(n / 2)) / 2.0
+            alias.getOrElse(nameOf(colExpr)) -> result
         }.toMap
 
       Row(groupCols ++ aggCols)
@@ -411,6 +440,19 @@ final class LocalBackend(registry: DataRegistry = DataRegistry.empty) extends Ba
         else
           val mean = vals.sum / vals.size
           vals.map(v => (v - mean) * (v - mean)).sum / (vals.size - 1)
+
+      case First(col, _) =>
+        rows.map(r => ExpressionEvaluator.evaluate(col, r)).find(_ != null).orNull
+
+      case Last(col, _) =>
+        rows.map(r => ExpressionEvaluator.evaluate(col, r)).filter(_ != null).lastOption.orNull
+
+      case Median(col, _) =>
+        val sorted = rows.map(r => ExpressionEvaluator.evaluate(col, r)).filter(_ != null).map(toDouble).sorted
+        if sorted.isEmpty then null
+        else
+          val n = sorted.size
+          if n % 2 == 1 then sorted(n / 2) else (sorted(n / 2 - 1) + sorted(n / 2)) / 2.0
 
   // ---------------------------------------------------------------------------
   // Helpers

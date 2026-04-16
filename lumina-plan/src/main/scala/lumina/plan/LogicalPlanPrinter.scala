@@ -214,3 +214,6 @@ object LogicalPlanPrinter:
     case CountDistinct(col, alias)   => s"COUNT(DISTINCT ${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
     case StdDev(col, alias)          => s"STDDEV(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
     case Variance(col, alias)        => s"VARIANCE(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case First(col, alias)           => s"FIRST(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Last(col, alias)            => s"LAST(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
+    case Median(col, alias)          => s"MEDIAN(${exprStr(col)})${alias.map(a => s" AS $a").getOrElse("")}"
