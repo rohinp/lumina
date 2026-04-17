@@ -125,6 +125,19 @@ object Expression:
   final case class Floor(expr: Expression) extends Expression
   /** Returns the smallest integer not less than the expression value. */
   final case class Ceil(expr: Expression) extends Expression
+  // Hash functions
+  /**
+   * Returns the MD5 digest of the string representation of `expr` as a
+   * 32-character lowercase hexadecimal string.  Returns null for null input.
+   */
+  final case class Md5(expr: Expression) extends Expression
+
+  /**
+   * Returns the SHA-256 digest of the string representation of `expr` as a
+   * 64-character lowercase hexadecimal string.  Returns null for null input.
+   */
+  final case class Sha256(expr: Expression) extends Expression
+
   /** Returns the square root of a non-negative numeric expression. */
   final case class Sqrt(expr: Expression) extends Expression
   /** Raises `base` to the power of `exponent`. */

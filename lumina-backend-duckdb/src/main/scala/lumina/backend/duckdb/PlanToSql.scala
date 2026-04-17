@@ -183,6 +183,10 @@ object PlanToSql:
     // Type casting
     case Cast(e, t) => s"CAST(${exprSql(e)} AS ${sqlType(t)})"
 
+    // Hash functions
+    case Md5(e)    => s"md5(CAST(${exprSql(e)} AS VARCHAR))"
+    case Sha256(e) => s"sha256(CAST(${exprSql(e)} AS VARCHAR))"
+
     // Numeric functions
     case Abs(e)         => s"ABS(${exprSql(e)})"
     case Round(e, s)    => s"ROUND(${exprSql(e)}, $s)"

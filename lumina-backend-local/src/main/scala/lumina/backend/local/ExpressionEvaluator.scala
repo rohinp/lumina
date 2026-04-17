@@ -308,6 +308,14 @@ object ExpressionEvaluator:
             case d: LocalDateTime => d.format(formatter)
             case other            => other.toString
 
+      // Hash functions
+      case Md5(e) =>
+        val v = evaluate(e, row)
+        if v == null then null else hexDigest("MD5", v.toString)
+      case Sha256(e) =>
+        val v = evaluate(e, row)
+        if v == null then null else hexDigest("SHA-256", v.toString)
+
       // Numeric functions
       case Abs(e)                       =>
         val v = evaluate(e, row)
@@ -415,6 +423,11 @@ object ExpressionEvaluator:
         // allow cross-type numeric equality (e.g. Int 30 == Double 30.0)
         try toDouble(a) == toDouble(b)
         catch case _: IllegalArgumentException => a == b
+
+  private def hexDigest(algorithm: String, input: String): String =
+    val md    = java.security.MessageDigest.getInstance(algorithm)
+    val bytes = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+    bytes.map(b => f"${b & 0xff}%02x").mkString
 
   private def toDouble(v: Any): Double =
     v match

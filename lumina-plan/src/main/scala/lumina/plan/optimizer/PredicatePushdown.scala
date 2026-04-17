@@ -182,6 +182,8 @@ object PredicatePushdown extends Rule:
     case NullIf(e, nv)      => referencedColumns(e) ++ referencedColumns(nv)
     case IfNull(e, r)       => referencedColumns(e) ++ referencedColumns(r)
     case Cast(e, _)    => referencedColumns(e)
+    case Md5(e)        => referencedColumns(e)
+    case Sha256(e)     => referencedColumns(e)
     case Abs(e)        => referencedColumns(e)
     case Round(e, _)   => referencedColumns(e)
     case Floor(e)      => referencedColumns(e)

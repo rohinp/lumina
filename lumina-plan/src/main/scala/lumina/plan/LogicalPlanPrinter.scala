@@ -149,6 +149,8 @@ object LogicalPlanPrinter:
     case Coalesce(exprs)              => s"COALESCE(${exprs.map(exprStr).mkString(", ")})"
     case In(e, values)                => s"${exprStr(e)} IN (${values.map(exprStr).mkString(", ")})"
     case Cast(e, t)                   => s"CAST(${exprStr(e)} AS $t)"
+    case Md5(e)                       => s"MD5(${exprStr(e)})"
+    case Sha256(e)                    => s"SHA256(${exprStr(e)})"
     case Abs(e)                       => s"ABS(${exprStr(e)})"
     case Round(e, scale)              => s"ROUND(${exprStr(e)}, $scale)"
     case Floor(e)                     => s"FLOOR(${exprStr(e)})"
