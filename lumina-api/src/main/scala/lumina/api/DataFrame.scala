@@ -12,6 +12,14 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   def filter(condition: Expression): DataFrame =
     DataFrame(Filter(logicalPlan, condition))
 
+  /**
+   * Alias for [[filter]] — mirrors Spark/SQL naming conventions.
+   * {{{
+   *   df.where(GreaterThan(col("age"), Literal(30)))
+   * }}}
+   */
+  def where(condition: Expression): DataFrame = filter(condition)
+
   /** Returns a new DataFrame projecting to the provided expressions (Scala API). */
   def select(columns: Expression*): DataFrame =
     DataFrame(Project(logicalPlan, columns.toVector, schema = None))
@@ -19,6 +27,16 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   /** Returns a new DataFrame projecting to the provided expressions (Java/Kotlin API). */
   def select(columns: java.lang.Iterable[Expression]): DataFrame =
     DataFrame(Project(logicalPlan, columns.asScala.toVector, schema = None))
+
+  /**
+   * Returns a new DataFrame keeping only the named columns, in the order given.
+   * Shorthand for `select(ColumnRef("a"), ColumnRef("b"), ...)`.
+   * {{{
+   *   df.select("city", "revenue")
+   * }}}
+   */
+  def select(first: String, rest: String*): DataFrame =
+    select((first +: rest).map(ColumnRef(_))*)
 
   /** Groups rows by the supplied expressions and registers aggregations (Scala API). */
   def groupBy(grouping: Seq[Expression], aggregations: Seq[Aggregation], schema: Option[Schema] = None): DataFrame =
@@ -35,6 +53,17 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
   /** Returns a new DataFrame sorted by the supplied sort expressions (Java/Kotlin API). */
   def sort(sortExprs: java.lang.Iterable[SortExpr]): DataFrame =
     DataFrame(Sort(logicalPlan, sortExprs.asScala.toVector))
+
+  /**
+   * Returns a new DataFrame sorted by a single column name.
+   * `ascending = true` (the default) sorts smallest-first; `false` sorts largest-first.
+   * {{{
+   *   df.orderBy("revenue")               // ascending
+   *   df.orderBy("revenue", ascending = false)  // descending
+   * }}}
+   */
+  def orderBy(column: String, ascending: Boolean = true): DataFrame =
+    sort(SortExpr(ColumnRef(column), ascending))
 
   /** Returns a new DataFrame with at most `n` rows. */
   def limit(n: Int): DataFrame =
@@ -438,6 +467,27 @@ final class DataFrame private (val logicalPlan: LogicalPlan):
     }.mkString(",")
     s"{$fields}"
 
+  /**
+   * Returns a [[ColumnRef]] for the given column name.
+   * Convenient when building expressions inline without importing `Expression.*`:
+   * {{{
+   *   df.filter(GreaterThan(df.col("age"), Literal(30)))
+   * }}}
+   */
+  def col(name: String): Expression = ColumnRef(name)
+
+  /**
+   * Applies `f` to this DataFrame and returns the result.
+   * Enables composable, named transformation steps that can be chained with `.`:
+   * {{{
+   *   def addTax(df: DataFrame): DataFrame = df.withColumn("tax", Multiply(df.col("price"), Literal(0.2)))
+   *   def dropNegatives(df: DataFrame): DataFrame = df.filter(GreaterThanOrEqual(df.col("price"), Literal(0)))
+   *
+   *   df.transform(addTax).transform(dropNegatives)
+   * }}}
+   */
+  def transform(f: DataFrame => DataFrame): DataFrame = f(this)
+
   /** Gives access to the underlying logical plan for advanced tooling. */
   def plan: LogicalPlan = logicalPlan
 
@@ -462,3 +512,6 @@ object Lumina:
   /** Convenience sort-expression builders. */
   def asc(expr: Expression): SortExpr  = SortExpr(expr, ascending = true)
   def desc(expr: Expression): SortExpr = SortExpr(expr, ascending = false)
+
+  /** Shorthand for [[Expression.ColumnRef]] — avoids a verbose import at call sites. */
+  def col(name: String): Expression = ColumnRef(name)
